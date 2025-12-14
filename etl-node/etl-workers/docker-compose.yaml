@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  etl-job:
+    build: .
+    image: mi-sistema/etl-worker:latest-py3.13
+    volumes:
+      - ./scripts:/app/scripts
+    # No lo dejamos corriendo siempre, es un contenedor de tarea (task)

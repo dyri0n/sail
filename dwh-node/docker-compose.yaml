@@ -1,0 +1,16 @@
+services:
+  dwh-rrhh:
+    build: .
+    container_name: dwh_rrhh_container
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password_root
+      POSTGRES_DB: rrhh_prod
+    ports:
+      - "6000:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql
+
+volumes:
+  pg_data:

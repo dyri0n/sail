@@ -1,0 +1,69 @@
+# ------------------------------------------------------------------
+# 1. Dependencias y Directorios de Entorno Virtual de Python
+# ------------------------------------------------------------------
+# Directorios de entorno virtual estándar:
+venv/
+.venv/
+env/
+.env/
+
+# Directorios de entorno para otras herramientas/plataformas
+# Ej: Poetry, Pipenv, etc.
+__pycache__/
+*.pyc
+*.pyd
+*.so
+dist/
+build/
+
+# Ignorar archivos de registro de dependencias (Ej: Pip freeze)
+requirements.txt.bak
+requirements.lock
+
+# ------------------------------------------------------------------
+# 2. Archivos de Variables de Entorno y Configuraciones Sensibles
+# ------------------------------------------------------------------
+# Archivos .env y .env.* estándar (Contienen secretos y configuraciones locales)
+.env
+.env.development
+.env.production
+.env.test
+
+# Archivos de entorno donde sea que estén (patrón recursivo)
+**/*.env
+**/*env/
+
+# Archivos de variables de entorno específicos de sistemas (ej. VS Code)
+*.code-workspace
+*.local
+
+# ------------------------------------------------------------------
+# 3. Archivos de Desarrollo y Testing
+# ------------------------------------------------------------------
+# Cobertura de pruebas
+.coverage
+
+# Resultados de pruebas
+.pytest_cache/
+htmlcov/
+
+# Logs y archivos de salida
+*.log
+*.tmp
+logs/
+
+# ------------------------------------------------------------------
+# 4. Airflow y Docker (Archivos generados en esta arquitectura)
+# ------------------------------------------------------------------
+# Archivos de datos generados por Docker Compose/Volumes
+data/
+dags_logs/
+init-scripts/*.sql.bak
+
+# Archivos específicos de Airflow
+airflow/dags/*.pyc
+airflow/dags/*.log
+
+# Archivos de caché/metadatos
+.DS_Store
+Thumbs.db
