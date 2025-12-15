@@ -28,6 +28,9 @@ CREATE TABLE dim_tiempo (
     dia_semana VARCHAR(20),
     es_fin_de_semana BOOLEAN,
     es_feriado BOOLEAN,
+    nombre_feriado VARCHAR(100),
+    tipo_feriado VARCHAR(50), -- 'Civil' o 'Religioso'
+    es_irrenunciable BOOLEAN DEFAULT FALSE,
     semana_anio SMALLINT
 );
 COMMENT ON TABLE dim_tiempo IS 'Dimensión estática para todas las facts.';
