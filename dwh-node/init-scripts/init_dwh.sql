@@ -7,7 +7,7 @@ CREATE SCHEMA dwh_rrhh AUTHORIZATION dwh_admin;
 -- 2. Permisos básicos
 GRANT ALL ON SCHEMA dwh_rrhh TO dwh_admin;
 
--- Cambiamos la "identidad" de la sesión actual. 
+-- Cambiamos la "identidad" de la sesión actual.
 -- Ahora todo lo que se cree abajo será propiedad nativa de dwh_admin.
 SET ROLE dwh_admin;
 
@@ -42,11 +42,14 @@ CREATE TABLE dim_empleado (
     rut VARCHAR(20),
     nombre_completo VARCHAR(255),
     sexo VARCHAR(20),
+
     fecha_nacimiento DATE,
     nacionalidad VARCHAR(50),
     estado_civil VARCHAR(50),
     formacion VARCHAR(100),
-    estado_laboral_activo BOOLEAN,
+
+    estado_laboral_activo BOOLEAN DEFAULT TRUE,
+
     scd_fecha_inicio_vigencia DATE,
     scd_fecha_fin_vigencia DATE,
     scd_es_actual BOOLEAN
@@ -55,35 +58,56 @@ COMMENT ON COLUMN dim_empleado.empleado_sk IS 'SCD Tipo 2: Cambia si cambia carg
 COMMENT ON COLUMN dim_empleado.estado_laboral_activo IS 'Indica si está trabajando ahora o no el empleado';
 COMMENT ON COLUMN dim_empleado.empleado_id_nk IS 'ID SAP u Original del sistema fuente';
 
+-- 1. Dimensión Cargo
+-- Llave de Negocio: nombre_cargo
 CREATE TABLE dim_cargo (
     cargo_sk SERIAL PRIMARY KEY,
-    nombre_cargo VARCHAR(255),
+    nombre_cargo VARCHAR(255) NOT NULL,
     familia_puesto VARCHAR(100),
-    area_funcional VARCHAR(100)
+    area_funcional VARCHAR(100),
+
+    CONSTRAINT uk_dim_cargo_nombre UNIQUE (nombre_cargo)
 );
 
+-- 2. Dimensión Empresa
+-- Llave de Negocio: codigo (Ej: '837', '841')
 CREATE TABLE dim_empresa (
     empresa_sk SERIAL PRIMARY KEY,
-    codigo VARCHAR(20),
-    nombre VARCHAR(100)
+    codigo VARCHAR(20) NOT NULL,
+    nombre VARCHAR(100),
+
+    CONSTRAINT uk_dim_empresa_codigo UNIQUE (codigo)
 );
 
+-- 3. Dimensión Gerencia
+-- Llave de Negocio: nombre_gerencia
 CREATE TABLE dim_gerencia (
     gerencia_sk SERIAL PRIMARY KEY,
-    nombre_gerencia VARCHAR(100)
+    nombre_gerencia VARCHAR(100) NOT NULL,
+
+    CONSTRAINT uk_dim_gerencia_nombre UNIQUE (nombre_gerencia)
 );
 
+-- 4. Dimensión Centro Costo
+-- Llave de Negocio: nombre_ceco (o codigo si tuvieras separado, aqui usamos nombre)
 CREATE TABLE dim_centro_costo (
     ceco_sk SERIAL PRIMARY KEY,
-    nombre_ceco VARCHAR(100)
+    nombre_ceco VARCHAR(100) NOT NULL,
+
+    CONSTRAINT uk_dim_ceco_nombre UNIQUE (nombre_ceco)
 );
 
+-- 5. Dimensión Modalidad Contrato
+-- Llave de Negocio: COMPUESTA (tipo_vinculo + regimen)
+-- Ejemplo: 'INDEFINIDO' + 'FULL-TIME' es distinto a 'INDEFINIDO' + 'PART-TIME'
 CREATE TABLE dim_modalidad_contrato (
     modalidad_sk SERIAL PRIMARY KEY,
-    tipo_vinculo_legal VARCHAR(50),
-    regimen_horario VARCHAR(50),
+    tipo_vinculo_legal VARCHAR(50) NOT NULL,
+    regimen_horario VARCHAR(50) NOT NULL,
     fte_estandar DECIMAL(5,2),
-    horas_cap_mensual_estandar INTEGER
+    horas_cap_mensual_estandar INTEGER,
+
+    CONSTRAINT uk_dim_modalidad_combo UNIQUE (tipo_vinculo_legal, regimen_horario)
 );
 COMMENT ON TABLE dim_modalidad_contrato IS 'Junk Dimension que combina Tipo de Empleo y Jornada.';
 COMMENT ON COLUMN dim_modalidad_contrato.tipo_vinculo_legal IS 'Ej: Empleado, Temporal, Jubilado';
