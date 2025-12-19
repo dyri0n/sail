@@ -133,9 +133,11 @@ COMMENT ON TABLE dim_permiso IS 'Clasifica el estado del empleado ese día (Vaca
 
 CREATE TABLE dim_medida_aplicada (
     medida_sk SERIAL PRIMARY KEY,
-    tipo_movimiento VARCHAR(50),
+    tipo_movimiento VARCHAR(100),
     razon_detallada VARCHAR(255),
     es_voluntario BOOLEAN
+
+    CONSTRAINT uk_dim_medida UNIQUE (tipo_movimiento, razon_detallada)
 );
 COMMENT ON COLUMN dim_medida_aplicada.tipo_movimiento IS 'Alta, Baja, Cambio Puesto';
 
@@ -217,37 +219,50 @@ COMMENT ON COLUMN fact_asistencia.es_atraso IS '1 si Minutos_Atraso > Tolerancia
 -- ÁREA: ROTACIÓN
 CREATE TABLE fact_rotacion (
     rotacion_id SERIAL PRIMARY KEY,
-    -- Foreign Keys
-    modalidad_sk INTEGER REFERENCES dim_modalidad_contrato(modalidad_sk),
-    empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
-    ceco_sk INTEGER REFERENCES dim_centro_costo(ceco_sk),
-    medida_sk INTEGER REFERENCES dim_medida_aplicada(medida_sk),
-    cargo_sk INTEGER REFERENCES dim_cargo(cargo_sk),
-    empresa_sk INTEGER REFERENCES dim_empresa(empresa_sk),
+
+    -- Período de Vigencia
     fecha_inicio_vigencia_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     fecha_fin_vigencia_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
+
+    -- Dimensiones
+    modalidad_sk INTEGER REFERENCES dim_modalidad_contrato(modalidad_sk),
+    empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
+    empresa_sk INTEGER REFERENCES dim_empresa(empresa_sk),
+    ceco_sk INTEGER REFERENCES dim_centro_costo(ceco_sk),
+    cargo_sk INTEGER REFERENCES dim_cargo(cargo_sk),
+    medida_sk INTEGER REFERENCES dim_medida_aplicada(medida_sk),
+    
     -- Métricas
-    sueldo_base_intervalo DECIMAL(15,2),
+    sueldo_base_intervalo DECIMAL(15,2) DEFAULT 0,
     variacion_headcount INTEGER
+
+    -- Auditoría
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 COMMENT ON TABLE fact_rotacion IS 'Tabla de intervalos. Historia de cambios contractuales.';
 COMMENT ON COLUMN fact_rotacion.variacion_headcount IS '+1 (Alta), -1 (Baja), 0 (Cambio)';
 
 -- ÁREA: DOTACIÓN (SNAPSHOT)
 CREATE TABLE fact_dotacion_snapshot (
     -- Esta tabla suele tener un volumen alto, se puede usar particionamiento por mes
-    -- Foreign Keys
-    modalidad_sk INTEGER REFERENCES dim_modalidad_contrato(modalidad_sk),
-    empresa_sk INTEGER REFERENCES dim_empresa(empresa_sk),
-    cargo_sk INTEGER REFERENCES dim_cargo(cargo_sk),
-    empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
+
+    -- Tiempo de Cierre del Mes
     mes_cierre_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
+
+    -- Dimensiones
+    empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
+    cargo_sk INTEGER REFERENCES dim_cargo(cargo_sk),
+    empresa_sk INTEGER REFERENCES dim_empresa(empresa_sk),
+    modalidad_sk INTEGER REFERENCES dim_modalidad_contrato(modalidad_sk),
+
     -- Métricas
     headcount INTEGER DEFAULT 1,
     fte_real DECIMAL(5,2),
     horas_capacidad_mensual INTEGER,
     sueldo_base_mensual DECIMAL(15,2),
     antiguedad_meses INTEGER,
+    
     -- Clave Primaria Compuesta (opcional pero recomendada para snapshots)
     PRIMARY KEY (mes_cierre_sk, empleado_sk)
 );
