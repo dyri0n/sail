@@ -1,0 +1,25 @@
+# =============================================================================
+# Requirements único (Python 3.13 + Airflow 3.1.5)
+# =============================================================================
+# Uso:
+#   python -m venv .venv
+#   .venv\Scripts\activate  (Windows)
+#   pip install -r requirements-dev.txt
+# =============================================================================
+
+# Airflow core
+apache-airflow==3.1.5
+
+# Providers Airflow
+apache-airflow-providers-docker>=3.10.0
+apache-airflow-providers-common-sql>=1.14.0
+apache-airflow-providers-postgres>=5.11.0
+
+# Dependencias usadas en DAGs/Workers
+docker>=7.0.0
+SQLAlchemy>=2.0.0
+python-dotenv>=1.0.0
+
+# Herramientas de desarrollo
+mypy>=1.8.0
+ruff>=0.1.0

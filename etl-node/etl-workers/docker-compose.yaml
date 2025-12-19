@@ -1,8 +1,30 @@
-version: '3.8'
 services:
   etl-job:
     build: .
-    image: mi-sistema/etl-worker:latest-py3.13
+    image: mi-sistema/etl-worker:latest
+    container_name: etl-worker-test
     volumes:
       - ./scripts:/app/scripts
+      # Volumen para datos de entrada/salida en testing
+      - ../input_data:/app/data
+    environment:
+      # Variables de entorno para testing (sobrescribir en producción)
+      - DB_URI=postgresql+psycopg2://user:pass@host:5432/staging_db
+      - LOG_LEVEL=DEBUG
     # No lo dejamos corriendo siempre, es un contenedor de tarea (task)
+    profiles:
+      - testing
+
+  # Servicio para testing interactivo
+  etl-shell:
+    build: .
+    image: mi-sistema/etl-worker:latest
+    container_name: etl-worker-shell
+    volumes:
+      - ./scripts:/app/scripts
+      - ../input_data:/app/data
+    stdin_open: true
+    tty: true
+    entrypoint: /bin/bash
+    profiles:
+      - development

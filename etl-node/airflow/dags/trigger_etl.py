@@ -1,53 +1,63 @@
+from config.settings import settings
+from datetime import datetime, timedelta
+
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
-from airflow.utils.dates import days_ago
 from docker.types import Mount
+
+# Configuración centralizada
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Definición de argumentos por defecto
 default_args = {
     'owner': 'data-team',
-    'start_date': days_ago(1),
+    'start_date': datetime(2024, 1, 1),
     'retries': 1,
 }
 
 with DAG(
-    'etl_pesado_python_3_13',
+    'etl_pesado_python',
     default_args=default_args,
-    schedule_interval='@daily',
-    catchup=False
+    schedule='@daily',
+    catchup=False,
+    tags=["etl", "worker", "python"],
 ) as dag:
 
     # Esta tarea levanta el contenedor ETL definido en la otra carpeta
     ejecutar_script_etl = DockerOperator(
         task_id='correr_script_pesado',
-        # Nombre de la imagen que construiste en la carpeta /etl-worker
-        image='mi-sistema/etl-worker:latest-py3.13',
-        container_name='etl_worker_run_unique',
+        # Imagen configurada centralizadamente
+        image=settings.ETL_WORKER_IMAGE,
+        # Nombre único por ejecución
+        container_name='etl_worker_run_{{ ts_nodash }}',
         api_version='auto',
-        auto_remove=True, # Borra el contenedor al terminar para ahorrar espacio
-        
-        # El comando que ejecutará DENTRO del contenedor de Python 3.13
+        # Borra el contenedor al terminar exitosamente (Airflow 3.x)
+        auto_remove='success',
+
+        # El comando que ejecutará DENTRO del contenedor
         command="python /app/scripts/proceso_pesado.py",
-        
-        # --- CONFIGURACIÓN DE RED Y CARGA ---
-        
-        # CASO 1: Si están en la misma máquina, usa el network de docker por defecto
-        # network_mode='bridge',
-        # docker_url='unix://var/run/docker.sock',
-        
-        # CASO 2: Si el ETL está en OTRA máquina (Red distinta)
-        # Debes habilitar el puerto 2375 en el docker daemon de la máquina remota
-        docker_url='tcp://192.168.X.Y:2375',
-        network_mode='bridge',
-        
+
+        # --- CONFIGURACIÓN DE RED Y CARGA (desde settings) ---
+        docker_url=settings.get_worker_docker_url(),
+        network_mode=settings.DOCKER_NETWORK_MODE,
+
+        # Variables de entorno para el script (URIs de conexión)
+        environment=settings.get_worker_environment(),
+
         # Montar volúmenes si necesitas compartir archivos (logs, csvs)
         mounts=[
-            Mount(source='/ruta/local/data', target='/app/data', type='bind'),
+            Mount(
+                source=settings.DATA_MOUNT_SOURCE,
+                target=settings.DATA_MOUNT_TARGET,
+                type='bind'
+            ),
         ],
-        
+
         # Límites para asegurar que no mate al host
-        mem_limit='4g',
-        cpus=2.0
+        mem_limit=settings.WORKER_MEM_LIMIT,
+        cpus=settings.WORKER_CPUS,
     )
 
     ejecutar_script_etl
