@@ -62,7 +62,7 @@ services:
           --role Admin \
           --email "$${AIRFLOW_ADMIN_EMAIL}" || true
 
-        echo "Creando conexiones de testing..."
+        echo "Creando conexión al DWH (incluye schemas dwh y stg)..."
         airflow connections add 'dwh_postgres_conn' \
           --conn-type 'postgres' \
           --conn-host "$${DWH_HOST}" \
@@ -70,13 +70,6 @@ services:
           --conn-login "$${DWH_USER}" \
           --conn-password "$${DWH_PASSWORD}" \
           --conn-schema "$${DWH_DATABASE}" || true
-        airflow connections add 'staging_postgres_conn' \
-          --conn-type 'postgres' \
-          --conn-host "$${STAGING_HOST}" \
-          --conn-port "$${STAGING_PORT}" \
-          --conn-login "$${STAGING_USER}" \
-          --conn-password "$${STAGING_PASSWORD}" \
-          --conn-schema "$${STAGING_DATABASE}" || true
         echo "Inicialización completada!"
     restart: "no"
     depends_on:
@@ -130,47 +123,5 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # =========================================================================
-  # SERVICIOS MOCK PARA TESTING (simular DWH y Staging sin conexión real)
-  # =========================================================================
-
-  # Mock Data Warehouse - Para validar que los DAGs compilan y se conectan
-  mock-dwh:
-    image: postgres:15
-    container_name: mock-dwh
-    environment:
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-      POSTGRES_DB: test_dwh
-    volumes:
-      - mock-dwh-volume:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "test_user", "-d", "test_dwh"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    profiles:
-      - testing # Solo se levanta con: docker-compose --profile testing up
-
-  # Mock Staging Database
-  mock-staging:
-    image: postgres:15
-    container_name: mock-staging
-    environment:
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-      POSTGRES_DB: test_staging
-    volumes:
-      - mock-staging-volume:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "test_user", "-d", "test_staging"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    profiles:
-      - testing
-
 volumes:
   postgres-db-volume:
-  mock-dwh-volume:
-  mock-staging-volume:

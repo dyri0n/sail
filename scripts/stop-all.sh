@@ -18,23 +18,15 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 # -----------------------------------------------------------------------------
 # 1. Airflow (detener primero para liberar conexiones)
 # -----------------------------------------------------------------------------
-echo "[1/3] Deteniendo Airflow..."
+echo "[1/2] Deteniendo Airflow..."
 cd "$ROOT_DIR/etl-node/airflow"
 ./scripts/compose-down.sh
 
 # -----------------------------------------------------------------------------
-# 2. Staging Database (ambos modos si están activos)
+# 2. Data Warehouse
 # -----------------------------------------------------------------------------
 echo ""
-echo "[2/3] Deteniendo Staging Database..."
-cd "$ROOT_DIR/stg-node"
-./scripts/compose-down.sh
-
-# -----------------------------------------------------------------------------
-# 3. Data Warehouse
-# -----------------------------------------------------------------------------
-echo ""
-echo "[3/3] Deteniendo Data Warehouse..."
+echo "[2/2] Deteniendo Data Warehouse..."
 cd "$ROOT_DIR/dwh-node"
 ./scripts/compose-down.sh
 

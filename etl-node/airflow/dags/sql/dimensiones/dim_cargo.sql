@@ -3,7 +3,7 @@ SELECT DISTINCT
     TRIM(UPPER(cargo)),
     NULL, -- familia_puesto
     TRIM(UPPER(area))
-FROM staging.stg_rotacion_empleados
+FROM stg.stg_rotacion_empleados
 WHERE cargo IS NOT NULL
 
 ON CONFLICT (nombre_cargo)

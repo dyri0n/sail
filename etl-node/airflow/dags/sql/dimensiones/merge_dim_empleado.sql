@@ -52,7 +52,7 @@ SELECT
         ELSE 'SIN_CAMBIOS'
     END AS accion_requerida
 
-FROM staging.stg_rotacion_empleados s
+FROM stg.stg_rotacion_empleados s
 LEFT JOIN dwh.dim_empleado d
     ON s.id_empleado = d.empleado_id_nk  -- Match por ID Negocio (SAP)
     AND d.scd_es_actual = TRUE;          -- Solo contra la versión vigente

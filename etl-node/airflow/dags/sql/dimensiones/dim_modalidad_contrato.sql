@@ -7,7 +7,7 @@ SELECT DISTINCT
         WHEN UPPER(jornada) LIKE '%PART%' OR UPPER(jornada) LIKE '%MEDIO%' THEN 0.5
         ELSE 1.0
     END
-FROM staging.stg_rotacion_empleados
+FROM stg.stg_rotacion_empleados
 WHERE tipo_empleo IS NOT NULL
 
 ON CONFLICT (tipo_vinculo, regimen_horario)

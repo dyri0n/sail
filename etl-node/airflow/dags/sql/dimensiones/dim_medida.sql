@@ -12,7 +12,7 @@ SELECT DISTINCT
         WHEN UPPER(motivo_medida) LIKE '%MUTUO ACUERDO%' THEN TRUE
         ELSE FALSE
     END
-FROM staging.stg_rotacion_empleados
+FROM stg.stg_rotacion_empleados
 WHERE
     clase_medida IS NOT NULL ON CONFLICT (
         tipo_movimiento,

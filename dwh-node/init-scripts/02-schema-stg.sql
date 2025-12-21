@@ -1,21 +1,19 @@
 -- =============================================================================
--- INIT_SCHEMA.SQL - Estructura de la Base de Datos Staging RRHH
+-- 02-SCHEMA-STG.SQL - Estructura del Schema Staging
 -- =============================================================================
--- Ejecutado automáticamente por Postgres al iniciar el contenedor.
+-- Tablas temporales donde se cargan los datos crudos antes de transformar.
+-- Se truncan después de cada ETL exitoso.
 -- =============================================================================
 
--- 1. Crear usuario dedicado para staging
-CREATE USER stg_admin WITH PASSWORD 'sail-stg-p4';
+-- Crear schema staging con propietario stg_admin
+CREATE SCHEMA stg AUTHORIZATION stg_admin;
 
-CREATE SCHEMA staging AUTHORIZATION stg_admin;
+-- Permisos para que dwh_admin pueda LEER del staging (necesario para los ETL)
+GRANT USAGE ON SCHEMA stg TO dwh_admin;
 
--- 2. Permisos
-GRANT ALL ON SCHEMA staging TO stg_admin;
-
--- Cambiar rol para que las tablas pertenezcan a stg_admin
+-- Cambiar al usuario stg_admin para crear las tablas
 SET ROLE stg_admin;
-
-SET search_path TO staging;
+SET search_path TO stg;
 
 -- =============================================================================
 -- TABLAS DE STAGING
@@ -61,8 +59,7 @@ CREATE TABLE stg_rotacion_empleados (
     nombre_superior VARCHAR(255)
 );
 
-COMMENT ON
-TABLE stg_rotacion_empleados IS 'Staging: Datos de rotación y maestro de empleados desde SAP.';
+COMMENT ON TABLE stg_rotacion_empleados IS 'Staging: Datos de rotación y maestro de empleados desde SAP.';
 
 -- Resumen anual de capacitaciones
 CREATE TABLE stg_capacitaciones_resumen (
@@ -94,8 +91,7 @@ CREATE TABLE stg_capacitaciones_resumen (
     )
 );
 
-COMMENT ON
-TABLE stg_capacitaciones_resumen IS 'Staging: Resumen mensual de capacitaciones realizadas.';
+COMMENT ON TABLE stg_capacitaciones_resumen IS 'Staging: Resumen mensual de capacitaciones realizadas.';
 
 -- Participantes de las capacitaciones
 CREATE TABLE stg_capacitaciones_participantes (
@@ -110,8 +106,7 @@ CREATE TABLE stg_capacitaciones_participantes (
     total_horas_formacion INTEGER
 );
 
-COMMENT ON
-TABLE stg_capacitaciones_participantes IS 'Staging: Detalle de participantes por capacitación.';
+COMMENT ON TABLE stg_capacitaciones_participantes IS 'Staging: Detalle de participantes por capacitación.';
 
 -- Perfiles de Trabajo (DFT)
 CREATE TABLE stg_perfiles_trabajo (
@@ -140,8 +135,7 @@ CREATE TABLE stg_perfiles_trabajo (
     apartado_legal TEXT
 );
 
-COMMENT ON
-TABLE stg_perfiles_trabajo IS 'Staging: Descripciones de puestos de trabajo (DFT).';
+COMMENT ON TABLE stg_perfiles_trabajo IS 'Staging: Descripciones de puestos de trabajo (DFT).';
 
 -- Proceso de selección de personal
 CREATE TABLE stg_proceso_seleccion (
@@ -160,12 +154,8 @@ CREATE TABLE stg_proceso_seleccion (
     observaciones TEXT,
     coste_proceso NUMERIC(12, 2) CHECK (coste_proceso >= 0),
     n_cv_recibidos INTEGER CHECK (n_cv_recibidos >= 0),
-    n_personas_entrevistadas_telefono INTEGER CHECK (
-        n_personas_entrevistadas_telefono >= 0
-    ),
-    n_personas_entrevistadas_presencial INTEGER CHECK (
-        n_personas_entrevistadas_presencial >= 0
-    ),
+    n_personas_entrevistadas_telefono INTEGER CHECK (n_personas_entrevistadas_telefono >= 0),
+    n_personas_entrevistadas_presencial INTEGER CHECK (n_personas_entrevistadas_presencial >= 0),
     n_personas_finalistas INTEGER CHECK (n_personas_finalistas >= 0),
     puesto VARCHAR(255),
     centro_area VARCHAR(255),
@@ -185,8 +175,9 @@ CREATE TABLE stg_proceso_seleccion (
     total_ambiguo INTEGER
 );
 
-COMMENT ON
-TABLE stg_proceso_seleccion IS 'Staging: Procesos de selección y reclutamiento.';
+COMMENT ON TABLE stg_proceso_seleccion IS 'Staging: Procesos de selección y reclutamiento.';
 
--- Restaurar rol
+-- Permisos de lectura para dwh_admin sobre todas las tablas de staging
 RESET ROLE;
+GRANT SELECT ON ALL TABLES IN SCHEMA stg TO dwh_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA stg GRANT SELECT ON TABLES TO dwh_admin;

@@ -1,22 +1,23 @@
--- scripts/init_dwh.sql
+-- =============================================================================
+-- 03-SCHEMA-DWH.SQL - Estructura del Schema Data Warehouse
+-- =============================================================================
+-- Tablas dimensionales y de hechos del modelo estrella.
+-- Datos históricos y definitivos.
+-- =============================================================================
 
--- 1. Configuración inicial (Ejecutado como 'postgres')
-CREATE USER dwh_admin WITH PASSWORD 'sail-rrhh-p4';
-CREATE SCHEMA dwh_rrhh AUTHORIZATION dwh_admin;
+-- Crear schema dwh con propietario dwh_admin
+CREATE SCHEMA dwh AUTHORIZATION dwh_admin;
 
--- 2. Permisos básicos
-GRANT ALL ON SCHEMA dwh_rrhh TO dwh_admin;
+-- Permisos
+GRANT ALL ON SCHEMA dwh TO dwh_admin;
 
--- Cambiamos la "identidad" de la sesión actual.
--- Ahora todo lo que se cree abajo será propiedad nativa de dwh_admin.
+-- Cambiar al usuario dwh_admin para crear las tablas
 SET ROLE dwh_admin;
+SET search_path TO dwh;
 
--- Definimos el path (opcional si usas nombres completos, pero cómodo)
-SET search_path TO dwh_rrhh;
-
--- =============================================================
+-- =============================================================================
 -- 1. DIMENSIONES (Tablas Maestras)
--- =============================================================
+-- =============================================================================
 
 CREATE TABLE dim_tiempo (
     tiempo_sk INTEGER PRIMARY KEY, -- Formato AAAAMMDD
@@ -42,14 +43,11 @@ CREATE TABLE dim_empleado (
     rut VARCHAR(20),
     nombre_completo VARCHAR(255),
     sexo VARCHAR(20),
-
     fecha_nacimiento DATE,
     nacionalidad VARCHAR(50),
     estado_civil VARCHAR(50),
     formacion VARCHAR(100),
-
     estado_laboral_activo BOOLEAN DEFAULT TRUE,
-
     scd_fecha_inicio_vigencia DATE,
     scd_fecha_fin_vigencia DATE,
     scd_es_actual BOOLEAN
@@ -58,55 +56,39 @@ COMMENT ON COLUMN dim_empleado.empleado_sk IS 'SCD Tipo 2: Cambia si cambia carg
 COMMENT ON COLUMN dim_empleado.estado_laboral_activo IS 'Indica si está trabajando ahora o no el empleado';
 COMMENT ON COLUMN dim_empleado.empleado_id_nk IS 'ID SAP u Original del sistema fuente';
 
--- 1. Dimensión Cargo
--- Llave de Negocio: nombre_cargo
 CREATE TABLE dim_cargo (
     cargo_sk SERIAL PRIMARY KEY,
     nombre_cargo VARCHAR(255) NOT NULL,
     familia_puesto VARCHAR(100),
     area_funcional VARCHAR(100),
-
     CONSTRAINT uk_dim_cargo_nombre UNIQUE (nombre_cargo)
 );
 
--- 2. Dimensión Empresa
--- Llave de Negocio: codigo (Ej: '837', '841')
 CREATE TABLE dim_empresa (
     empresa_sk SERIAL PRIMARY KEY,
     codigo VARCHAR(20) NOT NULL,
     nombre VARCHAR(100),
-
     CONSTRAINT uk_dim_empresa_codigo UNIQUE (codigo)
 );
 
--- 3. Dimensión Gerencia
--- Llave de Negocio: nombre_gerencia
 CREATE TABLE dim_gerencia (
     gerencia_sk SERIAL PRIMARY KEY,
     nombre_gerencia VARCHAR(100) NOT NULL,
-
     CONSTRAINT uk_dim_gerencia_nombre UNIQUE (nombre_gerencia)
 );
 
--- 4. Dimensión Centro Costo
--- Llave de Negocio: nombre_ceco (o codigo si tuvieras separado, aqui usamos nombre)
 CREATE TABLE dim_centro_costo (
     ceco_sk SERIAL PRIMARY KEY,
     nombre_ceco VARCHAR(100) NOT NULL,
-
     CONSTRAINT uk_dim_ceco_nombre UNIQUE (nombre_ceco)
 );
 
--- 5. Dimensión Modalidad Contrato
--- Llave de Negocio: COMPUESTA (tipo_vinculo + regimen)
--- Ejemplo: 'INDEFINIDO' + 'FULL-TIME' es distinto a 'INDEFINIDO' + 'PART-TIME'
 CREATE TABLE dim_modalidad_contrato (
     modalidad_sk SERIAL PRIMARY KEY,
     tipo_vinculo_legal VARCHAR(50) NOT NULL,
     regimen_horario VARCHAR(50) NOT NULL,
     fte_estandar DECIMAL(5,2),
     horas_cap_mensual_estandar INTEGER,
-
     CONSTRAINT uk_dim_modalidad_combo UNIQUE (tipo_vinculo_legal, regimen_horario)
 );
 COMMENT ON TABLE dim_modalidad_contrato IS 'Junk Dimension que combina Tipo de Empleo y Jornada.';
@@ -135,8 +117,7 @@ CREATE TABLE dim_medida_aplicada (
     medida_sk SERIAL PRIMARY KEY,
     tipo_movimiento VARCHAR(100),
     razon_detallada VARCHAR(255),
-    es_voluntario BOOLEAN
-
+    es_voluntario BOOLEAN,
     CONSTRAINT uk_dim_medida UNIQUE (tipo_movimiento, razon_detallada)
 );
 COMMENT ON COLUMN dim_medida_aplicada.tipo_movimiento IS 'Alta, Baja, Cambio Puesto';
@@ -161,30 +142,26 @@ CREATE TABLE dim_lugar_realizacion (
     pais VARCHAR(100)
 );
 
--- =============================================================
+-- =============================================================================
 -- 2. FACTS (Tablas de Hechos)
--- =============================================================
+-- =============================================================================
 
 -- ÁREA: SELECCIÓN
 CREATE TABLE fact_seleccion (
     seleccion_id SERIAL PRIMARY KEY,
-    -- Foreign Keys
     cargo_solicitado_sk INTEGER REFERENCES dim_cargo(cargo_sk),
     fecha_apertura_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     fecha_cierre_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     empleado_seleccionado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
     gerencia_solicitante_sk INTEGER REFERENCES dim_gerencia(gerencia_sk),
-    -- Degeneradas
     id_solicitud_nk VARCHAR(50),
     fuente_reclutamiento VARCHAR(100),
     recruiter_responsable VARCHAR(100),
     estado_final_proceso VARCHAR(50),
-    -- Métricas
     duracion_proceso_dias INTEGER,
     costo_proceso DECIMAL(15,2),
     cantidad_candidatos INTEGER,
     cantidad_entrevistas INTEGER,
-    -- Quality of Hire
     tiene_continuidad INTEGER,
     motivo_fallo_continuidad VARCHAR(255)
 );
@@ -194,20 +171,16 @@ COMMENT ON COLUMN fact_seleccion.tiene_continuidad IS '1 si superó 4 meses, 0 s
 -- ÁREA: ASISTENCIA
 CREATE TABLE fact_asistencia (
     asistencia_id SERIAL PRIMARY KEY,
-    -- Foreign Keys
     fecha_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     permiso_sk INTEGER REFERENCES dim_permiso(permiso_sk),
     empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
     turno_planificado_sk INTEGER REFERENCES dim_turno(turno_sk),
-    -- Datos Reales
     hora_entrada_real TIMESTAMP,
     hora_salida_real TIMESTAMP,
-    -- Métricas
     horas_trabajadas DECIMAL(10,2),
     minutos_atraso INTEGER,
     minutos_adelanto_salida INTEGER,
     tolerancia_aplicada_min INTEGER,
-    -- Flags
     permiso_aplicado VARCHAR(100),
     es_atraso INTEGER,
     es_salida_anticipada INTEGER,
@@ -219,51 +192,33 @@ COMMENT ON COLUMN fact_asistencia.es_atraso IS '1 si Minutos_Atraso > Tolerancia
 -- ÁREA: ROTACIÓN
 CREATE TABLE fact_rotacion (
     rotacion_id SERIAL PRIMARY KEY,
-
-    -- Período de Vigencia
     fecha_inicio_vigencia_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     fecha_fin_vigencia_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
-
-    -- Dimensiones
     modalidad_sk INTEGER REFERENCES dim_modalidad_contrato(modalidad_sk),
     empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
     empresa_sk INTEGER REFERENCES dim_empresa(empresa_sk),
     ceco_sk INTEGER REFERENCES dim_centro_costo(ceco_sk),
     cargo_sk INTEGER REFERENCES dim_cargo(cargo_sk),
     medida_sk INTEGER REFERENCES dim_medida_aplicada(medida_sk),
-    
-    -- Métricas
     sueldo_base_intervalo DECIMAL(15,2) DEFAULT 0,
-    variacion_headcount INTEGER
-
-    -- Auditoría
+    variacion_headcount INTEGER,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 COMMENT ON TABLE fact_rotacion IS 'Tabla de intervalos. Historia de cambios contractuales.';
 COMMENT ON COLUMN fact_rotacion.variacion_headcount IS '+1 (Alta), -1 (Baja), 0 (Cambio)';
 
 -- ÁREA: DOTACIÓN (SNAPSHOT)
 CREATE TABLE fact_dotacion_snapshot (
-    -- Esta tabla suele tener un volumen alto, se puede usar particionamiento por mes
-
-    -- Tiempo de Cierre del Mes
     mes_cierre_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
-
-    -- Dimensiones
     empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
     cargo_sk INTEGER REFERENCES dim_cargo(cargo_sk),
     empresa_sk INTEGER REFERENCES dim_empresa(empresa_sk),
     modalidad_sk INTEGER REFERENCES dim_modalidad_contrato(modalidad_sk),
-
-    -- Métricas
     headcount INTEGER DEFAULT 1,
     fte_real DECIMAL(5,2),
     horas_capacidad_mensual INTEGER,
     sueldo_base_mensual DECIMAL(15,2),
     antiguedad_meses INTEGER,
-    
-    -- Clave Primaria Compuesta (opcional pero recomendada para snapshots)
     PRIMARY KEY (mes_cierre_sk, empleado_sk)
 );
 COMMENT ON TABLE fact_dotacion_snapshot IS 'Snapshot Periódico Mensual. Foto fija.';
@@ -271,14 +226,12 @@ COMMENT ON TABLE fact_dotacion_snapshot IS 'Snapshot Periódico Mensual. Foto fi
 -- ÁREA: CAPACITACIÓN (OFERTA)
 CREATE TABLE fact_realizacion_capacitacion (
     realizacion_id SERIAL PRIMARY KEY,
-    -- Foreign Keys
     fecha_inicio_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     fecha_fin_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     gerencia_organizadora_sk INTEGER REFERENCES dim_gerencia(gerencia_sk),
     curso_sk INTEGER REFERENCES dim_curso(curso_sk),
     proveedor_sk INTEGER REFERENCES dim_proveedor(proveedor_sk),
     lugar_realizacion_sk INTEGER REFERENCES dim_lugar_realizacion(lugar_sk),
-    -- Métricas
     costo_total_curso DECIMAL(15,2),
     duracion_horas_total INTEGER,
     dias_extension INTEGER,
@@ -292,15 +245,15 @@ COMMENT ON TABLE fact_realizacion_capacitacion IS 'Gestión de la oferta. Una fi
 -- ÁREA: CAPACITACIÓN (DEMANDA)
 CREATE TABLE fact_participacion_capacitacion (
     participacion_id SERIAL PRIMARY KEY,
-    -- Foreign Keys
     mes_realizacion_sk INTEGER REFERENCES dim_tiempo(tiempo_sk),
     empleado_sk INTEGER REFERENCES dim_empleado(empleado_sk),
     curso_sk INTEGER REFERENCES dim_curso(curso_sk),
-    -- Link para Drill-Across
     realizacion_link_id INTEGER REFERENCES fact_realizacion_capacitacion(realizacion_id),
-    -- Métricas
     horas_capacitacion_recibidas DECIMAL(10,2),
     asistencia_count INTEGER DEFAULT 1
 );
 COMMENT ON TABLE fact_participacion_capacitacion IS 'Historial de aprendizaje del empleado.';
 COMMENT ON COLUMN fact_participacion_capacitacion.realizacion_link_id IS 'Para drill-across a costos en FactRealizacion';
+
+-- Restaurar rol
+RESET ROLE;

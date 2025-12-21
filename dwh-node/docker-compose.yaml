@@ -1,6 +1,11 @@
 services:
+  # =============================================================================
+  # BASE DE DATOS: DWH + Staging (todo en un nodo)
+  # =============================================================================
   dwh-rrhh:
-    build: .
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE:-Dockerfile}
     container_name: dwh_rrhh_container
     restart: always
     environment:
@@ -8,9 +13,14 @@ services:
       POSTGRES_PASSWORD: password_root
       POSTGRES_DB: rrhh_prod
     ports:
-      - "6000:5432"
+      - "${DWH_PORT:-6000}:5432"
     volumes:
-      - pg_data:/var/lib/postgresql
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rrhh_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pg_data:

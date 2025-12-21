@@ -40,7 +40,7 @@ CASE
     ) THEN -1
     ELSE 0 -- Cambios de puesto, ascensos, etc.
 END
-FROM staging.stg_rotacion_empleados s
+FROM stg.stg_rotacion_empleados s
 
 -- JOINs para recuperar los SKs (Surrogate Keys)
 LEFT JOIN dwh.dim_modalidad_contrato dm ON TRIM(UPPER(s.tipo_empleo)) = dm.tipo_vinculo_legal
