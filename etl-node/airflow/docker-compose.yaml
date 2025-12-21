@@ -7,10 +7,18 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    AIRFLOW__WEBSERVER__SECRET_KEY: "clave-secreta-desarrollo-cambiar-en-prod"
+    # Clave para encriptar conexiones - DEBE ser consistente entre reinicios
+    # Generar con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs=}
+    # Secret key movido a [api] (requerido en Airflow 3.x)
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-clave-secreta-desarrollo-cambiar-en-prod}
+    # CRÍTICO para Airflow 3.x: JWT secret compartido para autenticación entre componentes
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-mi-jwt-secret-compartido-cambiar-en-prod}
     # Configuración para testing/desarrollo
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs
+    # CRÍTICO para Airflow 3.x: URL del Execution API para que workers se comuniquen
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
     _PIP_ADDITIONAL_REQUIREMENTS: ""
     # Credenciales admin overrideables
     AIRFLOW_ADMIN_USERNAME: ${AIRFLOW_ADMIN_USERNAME:-admin}
@@ -18,17 +26,14 @@ x-airflow-common: &airflow-common
     AIRFLOW_ADMIN_FIRSTNAME: ${AIRFLOW_ADMIN_FIRSTNAME:-Admin}
     AIRFLOW_ADMIN_LASTNAME: ${AIRFLOW_ADMIN_LASTNAME:-User}
     AIRFLOW_ADMIN_EMAIL: ${AIRFLOW_ADMIN_EMAIL:-admin@example.com}
-    # --- Variables de configuración centralizada (desde .env) ---
-    DWH_HOST: ${DWH_HOST:-mock-dwh}
-    DWH_PORT: ${DWH_PORT:-5432}
-    DWH_USER: ${DWH_USER:-test_user}
-    DWH_PASSWORD: ${DWH_PASSWORD:-test_password}
-    DWH_DATABASE: ${DWH_DATABASE:-test_dwh}
-    STAGING_HOST: ${STAGING_HOST:-mock-staging}
-    STAGING_PORT: ${STAGING_PORT:-5432}
-    STAGING_USER: ${STAGING_USER:-test_user}
-    STAGING_PASSWORD: ${STAGING_PASSWORD:-test_password}
-    STAGING_DATABASE: ${STAGING_DATABASE:-test_staging}
+    # --- Variables de configuración centralizada ---
+    # DWH + Staging están en el mismo nodo, una sola conexión
+    DWH_HOST: ${DWH_HOST:-host.docker.internal}
+    DWH_PORT: ${DWH_PORT:-6000}
+    DWH_USER: ${DWH_USER:-dwh_admin}
+    DWH_PASSWORD: ${DWH_PASSWORD:-sail-rrhh-p4}
+    DWH_DATABASE: ${DWH_DATABASE:-rrhh_prod}
+    # Worker settings
     ETL_WORKER_IMAGE: ${ETL_WORKER_IMAGE:-mi-sistema/etl-worker:latest}
     DOCKER_WORKER_URL: ${DOCKER_WORKER_URL:-unix://var/run/docker.sock}
     DOCKER_NETWORK_MODE: ${DOCKER_NETWORK_MODE:-bridge}
@@ -82,7 +87,8 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      test:
+        ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -103,6 +109,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     # Agregar al grupo docker para permisos del socket
     user: "${AIRFLOW_UID:-50000}:0"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # DAG Processor - REQUERIDO en Airflow 3.x para parsear/descubrir DAGs
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
     depends_on:
       airflow-init:
         condition: service_completed_successfully

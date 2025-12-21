@@ -19,7 +19,9 @@ apache-airflow-providers-postgres>=5.11.0
 docker>=7.0.0
 SQLAlchemy>=2.0.0
 python-dotenv>=1.0.0
+cryptography>=41.0.0
 
 # Herramientas de desarrollo
 mypy>=1.8.0
 ruff>=0.1.0
+

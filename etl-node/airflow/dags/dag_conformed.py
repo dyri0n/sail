@@ -6,24 +6,21 @@ Estrategia:
     2. Ejecución dependiente de Dimensión Empleado (SCD Tipo 2) una vez que las referencias base están listas.
 """
 
-from config.settings import settings
+import os
+import sys
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
-from airflow.providers.docker.operators.docker import DockerOperator
-from docker.types import Mount
+from airflow.providers.standard.operators.empty import EmptyOperator
 
-# Configuración centralizada
-import sys
-import os
+from config.settings import settings
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 default_args = {
     "owner": "data-team",
-    "start_date": datetime(2024, 1, 1),
+    "start_date": datetime.now() - timedelta(days=1),
     "retries": 1,
     "email_on_failure": False,
 }

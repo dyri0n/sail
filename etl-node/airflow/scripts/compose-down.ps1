@@ -22,4 +22,4 @@ if ($Testing) { $profile = "testing" }
 $composeArgs = @("compose")
 if ($profile) { $composeArgs += @("--profile", $profile) }
 
-docker @composeArgs down
+docker @composeArgs down -v
