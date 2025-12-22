@@ -29,6 +29,9 @@ requirements.lock
 .env.production
 .env.test
 
+# datos sensibles
+landing-zone/
+
 # Archivos de entorno donde sea que estén (patrón recursivo)
 **/*.env
 **/*env/
