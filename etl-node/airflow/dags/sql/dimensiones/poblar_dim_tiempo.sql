@@ -1,8 +1,11 @@
--- 1. Limpiamos la tabla para regenerarla completamente (Full Refresh)
-TRUNCATE TABLE dim_tiempo;
+-- =============================================================================
+-- POBLAR_DIM_TIEMPO.SQL - Generación de dimensión tiempo (2010 hasta +5 años)
+-- =============================================================================
+-- Estrategia: INSERT con ON CONFLICT DO NOTHING (no sobrescribe fechas existentes)
+-- Esto permite ejecutar el script múltiples veces sin duplicar ni perder datos
+-- =============================================================================
 
--- 2. Insertamos generando la serie de fechas
-INSERT INTO dim_tiempo (
+INSERT INTO dwh.dim_tiempo (
     tiempo_sk,
     fecha,
     anio,
@@ -12,6 +15,9 @@ INSERT INTO dim_tiempo (
     dia_semana,
     es_fin_de_semana,
     es_feriado,
+    nombre_feriado,
+    tipo_feriado,
+    es_irrenunciable,
     semana_anio
 )
 SELECT
@@ -22,7 +28,7 @@ SELECT
     datum AS fecha,
 
     -- Año
-    EXTRACT(YEAR FROM datum) AS anio,
+    EXTRACT(YEAR FROM datum)::SMALLINT AS anio,
 
     -- Nombre del Mes (Case para asegurar español sin depender de config del server)
     CASE EXTRACT(MONTH FROM datum)
@@ -33,7 +39,7 @@ SELECT
     END AS mes_nombre,
 
     -- Número de mes
-    EXTRACT(MONTH FROM datum) AS mes_numero,
+    EXTRACT(MONTH FROM datum)::SMALLINT AS mes_numero,
 
     -- Trimestre (Q1, Q2, etc)
     'Q' || TO_CHAR(datum, 'Q') AS trimestre,
@@ -48,18 +54,62 @@ SELECT
     -- Es fin de semana (6=Sábado, 7=Domingo en ISO)
     CASE WHEN EXTRACT(ISODOW FROM datum) IN (6, 7) THEN TRUE ELSE FALSE END AS es_fin_de_semana,
 
-    -- Es Feriado (Por defecto FALSE, actualizar luego con lógica de negocio específica)
+    -- Es Feriado (Por defecto FALSE, se actualiza con update_feriados.sql)
     FALSE AS es_feriado,
 
-    -- Semana del año
-    EXTRACT(WEEK FROM datum) AS semana_anio
+    -- Nombre del feriado (NULL por defecto)
+    NULL AS nombre_feriado,
 
-FROM (
-    -- AQUÍ ESTÁ LA MAGIA: Generar serie desde 2010-01-01 hasta (Hoy + 3 Años)
-    SELECT '2010-01-01'::DATE + SEQUENCE.DAY AS datum
-    FROM GENERATE_SERIES(
-        0,
-        (DATE_PART('year', CURRENT_DATE) + 3 - 2010) * 365 + 1500 -- Un estimado holgado o calculo exacto de días
-    ) AS SEQUENCE(DAY)
-) DQ
-WHERE datum <= (CURRENT_DATE + INTERVAL '3 years');
+    -- Tipo de feriado (NULL por defecto)
+    NULL AS tipo_feriado,
+
+    -- Es irrenunciable (FALSE por defecto)
+    FALSE AS es_irrenunciable,
+
+    -- Semana del año
+    EXTRACT(WEEK FROM datum)::SMALLINT AS semana_anio
+
+FROM generate_series(
+    '2010-01-01'::DATE,
+    (CURRENT_DATE + INTERVAL '5 years')::DATE,
+    '1 day'::INTERVAL
+) AS datum
+
+-- Si la fecha ya existe, no hacer nada (preservar datos de feriados actualizados)
+ON CONFLICT (tiempo_sk) DO NOTHING;
+
+-- =============================================================================
+-- REGISTRO ESPECIAL: "Fin de los tiempos" (9999-12-31)
+-- =============================================================================
+-- Usado para registros SCD Tipo 2 activos (sin fecha de fin de vigencia)
+-- y para representar "fecha desconocida" o "sin límite"
+-- =============================================================================
+INSERT INTO dwh.dim_tiempo (
+    tiempo_sk,
+    fecha,
+    anio,
+    mes_nombre,
+    mes_numero,
+    trimestre,
+    dia_semana,
+    es_fin_de_semana,
+    es_feriado,
+    nombre_feriado,
+    tipo_feriado,
+    es_irrenunciable,
+    semana_anio
+) VALUES (
+    99991231,
+    '9999-12-31'::DATE,
+    9999,
+    'Diciembre',
+    12,
+    'Q4',
+    'Viernes',
+    FALSE,
+    FALSE,
+    NULL,
+    NULL,
+    FALSE,
+    52
+) ON CONFLICT (tiempo_sk) DO NOTHING;

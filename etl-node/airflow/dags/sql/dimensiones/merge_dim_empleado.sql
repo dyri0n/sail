@@ -54,7 +54,7 @@ SELECT
 
 FROM stg.stg_rotacion_empleados s
 LEFT JOIN dwh.dim_empleado d
-    ON s.id_empleado = d.empleado_id_nk  -- Match por ID Negocio (SAP)
+    ON s.id_empleado::VARCHAR = d.empleado_id_nk  -- Match por ID Negocio (SAP) - Cast a VARCHAR
     AND d.scd_es_actual = TRUE;          -- Solo contra la versión vigente
 
 -- ====================================================================
@@ -86,14 +86,28 @@ WHERE d.empleado_sk = tmp.sk_existente
 -- ====================================================================
 
 INSERT INTO dwh.dim_empleado (
-    empleado_id_nk, rut, nombre_completo,
-    sexo, fecha_nacimiento, nacionalidad, estado_civil, formacion,
+    empleado_id_nk, 
+    rut, 
+    nombre_completo,
+    sexo, 
+    fecha_nacimiento, 
+    nacionalidad, 
+    estado_civil, 
+    formacion,
     estado_laboral_activo,
-    scd_fecha_inicio_vigencia, scd_fecha_fin_vigencia, scd_es_actual
+    scd_fecha_inicio_vigencia, 
+    scd_fecha_fin_vigencia, 
+    scd_es_actual
 )
 SELECT
-    tmp.id_nk, tmp.rut, tmp.nombre,
-    tmp.sexo, tmp.fecha_nacimiento, tmp.nacionalidad, tmp.estado_civil, tmp.formacion,
+    tmp.id_nk, 
+    tmp.rut, 
+    tmp.nombre,
+    tmp.sexo, 
+    tmp.fecha_nacimiento, 
+    tmp.nacionalidad, 
+    tmp.estado_civil, 
+    tmp.formacion,
 
     -- Definir Estado Activo para la nueva fila
     CASE
@@ -101,13 +115,8 @@ SELECT
         ELSE TRUE -- Casos Nuevo, Reingreso, Cambio Atributos (se asume activo)
     END,
 
-    -- Definir Fecha Inicio
-    CASE
-        -- Si es una baja, podrías querer usar la fecha real de baja del staging,
-        -- pero tu lógica decía 'Fecha_Baja (o Hoy)'. Aquí uso Hoy para consistencia de carga.
-        -- Si quieres fecha real: COALESCE(s.baja, CURRENT_DATE) (necesitarías joinear de nuevo o traer el campo)
-        ELSE CURRENT_DATE
-    END,
+    -- Fecha Inicio de vigencia (siempre es la fecha de carga)
+    CURRENT_DATE,
 
     '9999-12-31', -- Fecha Fin Futura
     TRUE          -- Es Actual

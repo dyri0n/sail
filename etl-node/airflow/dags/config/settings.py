@@ -37,8 +37,10 @@ class Settings:
     # =========================================================================
     # CONNECTION IDs (Para SQLExecuteQueryOperator - referencia a Airflow Connections)
     # =========================================================================
-    # Una sola conexión para DWH + Staging (misma BD, diferentes schemas)
+    # Conexión para DWH (lectura de staging, escritura en dwh)
     DWH_CONN_ID: str = os.getenv("AIRFLOW_DWH_CONN_ID", "dwh_postgres_conn")
+    # Conexión para Staging (escritura en stg)
+    STG_CONN_ID: str = os.getenv("AIRFLOW_STG_CONN_ID", "stg_postgres_conn")
 
     # =========================================================================
     # URIs DE CONEXIÓN (Para scripts Python en DockerOperator)
@@ -49,6 +51,9 @@ class Settings:
     DWH_USER: str = os.getenv("DWH_USER", "dwh_admin")
     DWH_PASSWORD: str = os.getenv("DWH_PASSWORD", "sail-rrhh-p4")
     DWH_DATABASE: str = os.getenv("DWH_DATABASE", "rrhh_prod")
+    # Staging
+    STG_USER: str = os.getenv("STG_USER", "stg_admin")
+    STG_PASSWORD: str = os.getenv("STG_PASSWORD", "sail-stg-p4")
 
     # =========================================================================
     # CONFIGURACIÓN DE WORKERS (Para DockerOperator)
@@ -82,6 +87,13 @@ class Settings:
         """Construye la URI de conexión al Data Warehouse (incluye staging)."""
         return (
             f"postgresql+psycopg2://{self.DWH_USER}:{self.DWH_PASSWORD}"
+            f"@{self.DWH_HOST}:{self.DWH_PORT}/{self.DWH_DATABASE}"
+        )
+
+    def get_stg_uri(self) -> str:
+        """Construye la URI de conexión al Staging (usuario stg_admin)."""
+        return (
+            f"postgresql+psycopg2://{self.STG_USER}:{self.STG_PASSWORD}"
             f"@{self.DWH_HOST}:{self.DWH_PORT}/{self.DWH_DATABASE}"
         )
 

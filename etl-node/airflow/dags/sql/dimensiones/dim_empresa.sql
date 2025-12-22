@@ -1,9 +1,10 @@
-INSERT INTO dwh.dim_empresa (id_empresa_sk, codigo_empresa_bk, nombre_empresa)
+INSERT INTO dwh.dim_empresa (codigo, nombre)
 VALUES
-    (1, 837, 'Sidesa'),
-    (2, 841, 'Luckia Arica')
+    (837, 'Sidesa'),
+    (841, 'Luckia Arica')
 
-ON CONFLICT (codigo_empresa_bk)
+ON CONFLICT (codigo)
 DO UPDATE SET
-    nombre_empresa = EXCLUDED.nombre_empresa;
-    -- Esto permite que si un día cambias 'Sidesa' por 'Sidesa SPA', se actualice solo.
+    nombre = EXCLUDED.nombre;
+    -- Esto permite que si un día cambias 'Sidesa' 
+    -- por 'Sidesa SPA', se actualice solo.

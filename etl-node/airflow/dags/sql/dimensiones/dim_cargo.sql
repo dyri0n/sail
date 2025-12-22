@@ -6,7 +6,7 @@ SELECT DISTINCT
 FROM stg.stg_rotacion_empleados
 WHERE cargo IS NOT NULL
 
-ON CONFLICT (nombre_cargo)
+ON CONFLICT (nombre_cargo, area_funcional)
 DO UPDATE SET
     -- Si el cargo ya existía, actualizamos su área por si se movió
     area_funcional = EXCLUDED.area_funcional,

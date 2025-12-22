@@ -19,4 +19,8 @@ USER airflow
 RUN pip install --no-cache-dir \
     apache-airflow-providers-docker \
     apache-airflow-providers-common-sql \
-    apache-airflow-providers-postgres
+    apache-airflow-providers-postgres \
+    pandas \
+    openpyxl \
+    sqlalchemy \
+    psycopg2-binary

@@ -1,10 +1,8 @@
-TRUNCATE TABLE dwh.dim_gerencia RESTART IDENTITY CASCADE;
-
 INSERT INTO
     dwh.dim_gerencia (nombre_gerencia)
 SELECT DISTINCT
     TRIM(UPPER(gerencia))
-FROM stg.stg_resumen_anual_capacitaciones
+FROM stg.stg_capacitaciones_resumen
 WHERE
     gerencia IS NOT NULL
 UNION
@@ -12,4 +10,6 @@ SELECT DISTINCT
     TRIM(UPPER(gerencia))
 FROM stg.stg_proceso_seleccion
 WHERE
-    gerencia IS NOT NULL;
+    gerencia IS NOT NULL
+ON CONFLICT (nombre_gerencia) DO UPDATE SET
+    nombre_gerencia = EXCLUDED.nombre_gerencia;

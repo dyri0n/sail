@@ -44,6 +44,8 @@ x-airflow-common: &airflow-common
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
+    # Landing zone para archivos Excel
+    - ../../landing-zone:/landing-zone
   depends_on:
     postgres:
       condition: service_healthy
@@ -75,6 +77,16 @@ services:
           --conn-login "$${DWH_USER}" \
           --conn-password "$${DWH_PASSWORD}" \
           --conn-schema "$${DWH_DATABASE}" || true
+
+        echo "Creando conexión al Staging (usuario stg_admin)..."
+        airflow connections add 'stg_postgres_conn' \
+          --conn-type 'postgres' \
+          --conn-host "$${DWH_HOST}" \
+          --conn-port "$${DWH_PORT}" \
+          --conn-login 'stg_admin' \
+          --conn-password 'sail-stg-p4' \
+          --conn-schema "$${DWH_DATABASE}" || true
+
         echo "Inicialización completada!"
     restart: "no"
     depends_on:
@@ -104,6 +116,8 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
+      # Landing zone para archivos Excel
+      - ../../landing-zone:/landing-zone
       # Socket de Docker para orquestar contenedores externos
       # En Windows usar: //var/run/docker.sock (doble slash)
       - /var/run/docker.sock:/var/run/docker.sock
@@ -121,6 +135,8 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
+      # Landing zone para archivos Excel
+      - ../../landing-zone:/landing-zone
     depends_on:
       airflow-init:
         condition: service_completed_successfully
