@@ -67,7 +67,7 @@ CREATE TABLE dim_cargo (
     familia_puesto VARCHAR(100),
     area_funcional VARCHAR(100),
 
-    CONSTRAINT uk_dim_cargo_nombre UNIQUE (nombre_cargo)
+    CONSTRAINT uk_dim_cargo_nombre UNIQUE (nombre_cargo, area_funcional)
 );
 
 -- 2. Dimensión Empresa
@@ -140,7 +140,7 @@ CREATE TABLE dim_medida_aplicada (
     medida_sk SERIAL PRIMARY KEY,
     tipo_movimiento VARCHAR(100),
     razon_detallada VARCHAR(255),
-    es_voluntario BOOLEAN
+    es_voluntario BOOLEAN,
 
     CONSTRAINT uk_dim_medida UNIQUE (tipo_movimiento, razon_detallada)
 );
@@ -152,7 +152,8 @@ CREATE TABLE dwh.dim_curso (
     nombre_curso VARCHAR(255),
     categoria_tematica VARCHAR(100),
     modalidad VARCHAR(50),
-    CONSTRAINT uk_dim_curso_nombre UNIQUE (nombre_curso)
+
+    CONSTRAINT uk_dim_curso_nombre UNIQUE (nombre_curso, categoria_tematica, modalidad)
 );
 
 -- DimProveedor
@@ -311,7 +312,7 @@ CREATE TABLE fact_realizacion_capacitacion (
     proveedor_sk INTEGER REFERENCES dim_proveedor(proveedor_sk),
     lugar_realizacion_sk INTEGER REFERENCES dim_lugar_realizacion(lugar_sk),
 
-
+    -- Métricas
     costo_total_curso DECIMAL(15,2),
     duracion_horas_total INTEGER,
     dias_extension INTEGER,
@@ -320,7 +321,10 @@ CREATE TABLE fact_realizacion_capacitacion (
     satisfaccion_promedio DECIMAL(5,2),
     valoracion_formador DECIMAL(5,2),
     
-    fecha_carga TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    fecha_carga TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Business Key: Un curso solo puede tener una realización por fecha de inicio
+    CONSTRAINT uk_fact_realizacion_bk UNIQUE (curso_sk, fecha_inicio_sk)
 );
 COMMENT ON TABLE fact_realizacion_capacitacion IS 'Gestión de la oferta. Una fila por edición del curso.';
 

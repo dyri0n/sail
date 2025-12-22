@@ -1,4 +1,4 @@
-FROM postgres:17
+FROM postgres:18
 
 # Configuración de zona horaria (Importante para sistemas de Asistencia/RRHH)
 ENV TZ="America/Santiago"

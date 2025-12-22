@@ -6,7 +6,8 @@
 -- =============================================================================
 
 -- Usuario para el Data Warehouse (tablas dimensionales y de hechos)
-CREATE USER dwh_admin WITH PASSWORD 'sail-rrhh-p4';
+-- SUPERUSER necesario para poder ejecutar SET session_replication_role durante ETL
+CREATE USER dwh_admin WITH PASSWORD 'sail-rrhh-p4' SUPERUSER;
 
 -- Usuario para el Staging (tablas temporales de carga)
 CREATE USER stg_admin WITH PASSWORD 'sail-stg-p4';

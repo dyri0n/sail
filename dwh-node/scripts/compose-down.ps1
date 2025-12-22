@@ -14,4 +14,4 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-docker compose down
+docker compose down -v

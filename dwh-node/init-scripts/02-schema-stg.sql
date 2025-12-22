@@ -20,63 +20,65 @@ SET search_path TO stg;
 -- =============================================================================
 
 -- Tabla de staging para la rotación de empleados
+-- Nota: Se usa SERIAL como PK porque un empleado puede tener múltiples registros (historial de movimientos)
 CREATE TABLE stg_rotacion_empleados (
-    id_personal INTEGER PRIMARY KEY,
-    numero_personal_texto VARCHAR(100),
-    id_sociedad INTEGER,
-    nombre_completo VARCHAR(255),
-    nombre_empresa VARCHAR(255),
-    area_personal VARCHAR(255),
-    fecha_desde_area_personal DATE,
-    fecha_hasta_area_personal DATE,
-    unidad_organizativa VARCHAR(255),
-    posicion VARCHAR(255),
-    relacion_laboral VARCHAR(100),
-    fecha_antiguedad_puesto DATE,
-    denominacion_cargo_duplicada VARCHAR(255),
+    id_registro SERIAL PRIMARY KEY,
+    id_empleado INTEGER NOT NULL,
+    rut VARCHAR(12),
+    nombre VARCHAR(255), 
+    id_empresa INTEGER,
+    empresa VARCHAR(255),
+    tipo_empleo VARCHAR(255),
+    desde1 DATE,
+    hasta1 DATE,
+    area VARCHAR(255),
+    cargo VARCHAR(255),
+    jornada VARCHAR(100),
+    ant_puesto DATE,
+    ceco VARCHAR(255),
     fecha_nacimiento DATE,
     edad INTEGER CHECK (edad > 0),
     pais_nacimiento VARCHAR(100),
     lugar_nacimiento VARCHAR(100),
     nacionalidad VARCHAR(100),
     estado_civil VARCHAR(50),
-    numero_hijos INTEGER CHECK (numero_hijos >= 0),
+    nro_hijos INTEGER CHECK (nro_hijos >= 0),
     sexo VARCHAR(20),
-    fecha_desde_cargo DATE,
-    fecha_hasta_cargo DATE,
+    desde2 DATE,
+    hasta2 DATE,
     clase_fecha VARCHAR(100),
-    fecha_generica DATE,
+    fecha DATE,
     clase_prestamo VARCHAR(100),
     movilidad_geografica VARCHAR(100),
     experiencia_profesional TEXT,
-    fecha_inicio_exp DATE,
-    modificacion_exp VARCHAR(100),
-    fecha_hasta_exp DATE,
-    denominacion_clase_me VARCHAR(255),
-    denominacion_motivo_med VARCHAR(255),
-    fecha_alta DATE,
-    fecha_baja DATE,
-    nombre_superior VARCHAR(255)
+    desde3 DATE,
+    hasta3 DATE,
+    clase_medida VARCHAR(255),
+    motivo_medida VARCHAR(255),
+    alta DATE,
+    baja DATE,
+    encargado_superior VARCHAR(255)
 );
 
 COMMENT ON TABLE stg_rotacion_empleados IS 'Staging: Datos de rotación y maestro de empleados desde SAP.';
 
 -- Resumen anual de capacitaciones
 CREATE TABLE stg_capacitaciones_resumen (
-    id_capacitacion SERIAL PRIMARY KEY,
+    nro_capacitacion SERIAL PRIMARY KEY,
     mes VARCHAR(20) NOT NULL,
-    titulo_capacitacion VARCHAR(255) NOT NULL,
-    modalidad VARCHAR(100),
+    titulo VARCHAR(255) NOT NULL,
+    lugar VARCHAR(50), -- Presencial, Online, Virtual
     fecha_inicio DATE,
     fecha_fin DATE,
-    area_tematica VARCHAR(100),
-    tipo_formador VARCHAR(100),
+    objetivo_area VARCHAR(100),
+    externo_interno VARCHAR(50), -- Externo, Interno o Externo/Interno
+    tipo_curso VARCHAR(50), -- Similar a lugar
     gerencia VARCHAR(50),
     formador_proveedor VARCHAR(255),
-    asistentes INTEGER CHECK (asistentes > 0),
-    horas INTEGER CHECK (horas > 0),
-    horas_totales INTEGER,
-    coste_total_euros NUMERIC(10, 2) CHECK (coste_total_euros >= 0),
+    nro_asistentes INTEGER CHECK (nro_asistentes > 0),
+    horas_ppersona INTEGER CHECK (horas_ppersona > 0),
+    total_horas INTEGER,
+    coste NUMERIC(10, 2) CHECK (coste >= 0),
     valoracion_formador NUMERIC(3, 1) CHECK (
         valoracion_formador >= 1
         AND valoracion_formador <= 5
@@ -139,43 +141,74 @@ COMMENT ON TABLE stg_perfiles_trabajo IS 'Staging: Descripciones de puestos de t
 
 -- Proceso de selección de personal
 CREATE TABLE stg_proceso_seleccion (
-    id_control_interno INTEGER PRIMARY KEY,
-    fecha_cierre_proceso DATE,
-    situacion TEXT,
-    motivo VARCHAR(255),
-    detalle_motivo TEXT,
-    publicado_portal_interno BOOLEAN,
-    fecha_envio_responsable DATE,
-    fecha_entrevista_responsable DATE,
-    duracion_entrevista_gerente NUMERIC(10, 2),
-    duracion_dias_total INTEGER CHECK (duracion_dias_total >= 0),
-    fuente_reclutamiento VARCHAR(255),
-    detalle_fuente TEXT,
-    observaciones TEXT,
-    coste_proceso NUMERIC(12, 2) CHECK (coste_proceso >= 0),
-    n_cv_recibidos INTEGER CHECK (n_cv_recibidos >= 0),
-    n_personas_entrevistadas_telefono INTEGER CHECK (n_personas_entrevistadas_telefono >= 0),
-    n_personas_entrevistadas_presencial INTEGER CHECK (n_personas_entrevistadas_presencial >= 0),
-    n_personas_finalistas INTEGER CHECK (n_personas_finalistas >= 0),
-    puesto VARCHAR(255),
-    centro_area VARCHAR(255),
+    id_proceso INTEGER PRIMARY KEY,
+    fecha_cierre DATE,
+    cargo VARCHAR(255),
+    ceco VARCHAR(255),
     detalle_puesto VARCHAR(255),
+    detalle_situacion TEXT,
     gerencia VARCHAR(100),
     linea_negocio VARCHAR(100),
     grupo VARCHAR(10),
-    persona VARCHAR(255),
+    motivo VARCHAR(255),
+    detalles_motivo TEXT,
+    duracion_dias INTEGER CHECK (duracion_dias >= 0),
+    fuente_reclutamiento VARCHAR(255),
+    nombre VARCHAR(255),
     sexo VARCHAR(20),
     edad INTEGER CHECK (edad > 0),
     formacion VARCHAR(255),
-    anos_experiencia INTEGER CHECK (anos_experiencia >= 0),
+    agnos_experiencia INTEGER CHECK (agnos_experiencia >= 0),
     sector_procedencia VARCHAR(255),
-    activo BOOLEAN,
-    continuidad_mas_4_meses BOOLEAN,
-    origen VARCHAR(100),
-    total_ambiguo INTEGER
+    tiene_continuidad BOOLEAN,
+    nro_cvs_recibidos INTEGER CHECK (nro_cvs_recibidos >= 0),
+    nro_personas_entrevistadas_telefono INTEGER CHECK (nro_personas_entrevistadas_telefono >= 0),
+    nro_personas_entrevistadas_presencial INTEGER CHECK (nro_personas_entrevistadas_presencial >= 0),
+    nro_personas_finalistas INTEGER CHECK (nro_personas_finalistas >= 0),
+    -- publicado_portal_interno BOOLEAN,
+    -- fecha_envio_responsable DATE,
+    -- fecha_entrevista_responsable DATE,
+    -- duracion_entrevista_gerente NUMERIC(10, 2),
+    -- detalle_fuente TEXT,
+    -- observaciones TEXT,
+    coste_proceso NUMERIC(12, 2) CHECK (coste_proceso >= 0)
+    -- activo BOOLEAN,
+    -- origen VARCHAR(100),
+    -- total_ambiguo INTEGER
 );
 
 COMMENT ON TABLE stg_proceso_seleccion IS 'Staging: Procesos de selección y reclutamiento.';
+
+CREATE TABLE stg_asistencia_diaria_geovictoria (
+    -- Columna técnica para secuencia de carga (Solicitud: Serial)
+    row_id SERIAL,
+
+    -- Identificadores y Fechas (PK)
+    id_empleado INTEGER NOT NULL,          -- Origen: Cargo (Numérico)
+    asistio_en DATE NOT NULL,              -- Origen: Fecha (Día corto + DD-MM-YYYY)
+
+    -- Datos Categóricos
+    grupo VARCHAR(100),                    -- Origen: Grupo (Texto en mayúsculas)
+    tipo_permiso VARCHAR(100),             -- Origen: Permiso (Texto)
+    tipo_turno VARCHAR(150),               -- Origen: Turno (Texto descriptivo HH:MM - HH:MM)
+
+    -- Marcas de Tiempo (Horas del día)
+    hora_ingreso TIME,                     -- Origen: Entró (HH:MM)
+    hora_salida TIME,                      -- Origen: Salió (HH:MM)
+
+    -- Duraciones (Cálculos de tiempo)
+    atraso INTERVAL,                       -- Origen: Atraso (H:MM)
+    adelanto INTERVAL,                     -- Origen: Adelanto (H:MM)
+    total_horas INTERVAL,                  -- Origen: Horas Totales (H:MM)
+
+    -- Definición de la llave primaria compuesta
+    CONSTRAINT pk_stg_asistencia PRIMARY KEY (asistio_en, id_empleado)
+);
+
+-- Comentarios en las columnas para documentación (Opcional pero recomendado)
+COMMENT ON TABLE stg_asistencia_diaria_geovictoria IS 'Tabla de staging para asistencia diaria importada de GeoVictoria';
+COMMENT ON COLUMN stg_asistencia_diaria_geovictoria.id_empleado IS 'Identificador numérico del empleado (Legajo/ID)';
+COMMENT ON COLUMN stg_asistencia_diaria_geovictoria.atraso IS 'Duración del atraso. 00:00 si no hubo';
 
 -- Permisos de lectura para dwh_admin sobre todas las tablas de staging
 RESET ROLE;
