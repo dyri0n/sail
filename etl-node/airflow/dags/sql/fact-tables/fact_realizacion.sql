@@ -20,7 +20,7 @@ SELECT
     s.indice_satisfaccion,
     s.valoracion_formador
 
-FROM stg.stg_capacitaciones_resumen s
+FROM stg.stg_realizacion_capacitaciones s
 
 -- Joins Dimensiones
 LEFT JOIN dwh.dim_gerencia dg ON TRIM(UPPER(s.gerencia)) = dg.nombre_gerencia

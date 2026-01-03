@@ -2,7 +2,7 @@ INSERT INTO
     dwh.dim_gerencia (nombre_gerencia)
 SELECT DISTINCT
     TRIM(UPPER(gerencia))
-FROM stg.stg_capacitaciones_resumen
+FROM stg.stg_realizacion_capacitaciones
 WHERE
     gerencia IS NOT NULL
 UNION

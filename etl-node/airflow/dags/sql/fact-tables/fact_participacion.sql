@@ -36,7 +36,7 @@ FROM (
         s.total_horas_formacion,
         1 AS asistencia_count
 
-    FROM stg.stg_capacitaciones_participantes s
+    FROM stg.stg_participacion_capacitaciones s
 
     LEFT JOIN dwh.dim_empleado de 
         ON s.rut = de.rut 

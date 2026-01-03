@@ -10,6 +10,6 @@ SELECT DISTINCT
         WHEN LOWER(tipo_permiso) IN ('ninguno', '') THEN 'PRESENCIA'
         ELSE 'OTROS PERMISOS'
     END
-FROM stg.stg_asistencia_diaria_geovictoria
+FROM stg.stg_asistencia_diaria
 WHERE tipo_permiso IS NOT NULL
 ON CONFLICT (codigo_permiso_nk) DO NOTHING;
