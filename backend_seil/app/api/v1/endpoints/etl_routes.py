@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from app.utils.airflow_client import airflow_client
 from app.db.session import get_db
 from app.core.dependencies import get_current_user
+from app.services.audit_service import AuditService
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.models.etl import ETLExecution, ExecutionState
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/etl", tags=["ETL"])
 @router.post("/trigger")
 async def trigger_etl(
     dag_id: str,
+    request: Request,
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -37,6 +39,21 @@ async def trigger_etl(
         db.commit()
         db.refresh(execution)
         
+        # Log successful ETL trigger
+        AuditService.log_event(
+            action="ETL_TRIGGER",
+            user_id=current_user.get("sub"),
+            username=current_user.get("username"),
+            resource="ETL",
+            ip_address=request.client.host,
+            level="INFO",
+            metadata={
+                "dag_id": dag_id,
+                "dag_run_id": execution.dag_run_id,
+                "execution_id": str(execution.id)
+            }
+        )
+        
         return {
             "execution_id": execution.id,
             "dag_run_id": execution.dag_run_id,
@@ -45,6 +62,20 @@ async def trigger_etl(
         }
         
     except Exception as e:
+        # Log ETL trigger failure
+        AuditService.log_event(
+            action="ETL_FAILED",
+            user_id=current_user.get("sub"),
+            username=current_user.get("username"),
+            resource="ETL",
+            ip_address=request.client.host,
+            level="ERROR",
+            metadata={
+                "dag_id": dag_id,
+                "error": str(e)
+            }
+        )
+        
         # Imprimir traceback completo para debugging
         print("=" * 80)
         print("ERROR EN TRIGGER ETL:")

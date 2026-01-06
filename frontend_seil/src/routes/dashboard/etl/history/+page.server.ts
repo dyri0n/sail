@@ -1,6 +1,36 @@
 import type { PageServerLoad } from './$types';
 import { PUBLIC_API_BASE_URL as API_BASE_URL } from '$env/static/public';
 
+// Función para formatear fechas UTC del backend a hora de Chile
+function formatChileDate(dateString: string | null): string {
+    if (!dateString) return 'Pendiente';
+
+    try {
+        // El backend envía fechas en UTC sin 'Z', agregarlo si falta
+        let isoString = dateString;
+        if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+            isoString = dateString + 'Z';
+        }
+
+        const date = new Date(isoString);
+
+        // Formatear en español chileno con zona horaria de Chile
+        return date.toLocaleString('es-CL', {
+            timeZone: 'America/Santiago',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return 'Fecha inválida';
+    }
+}
+
 export const load: PageServerLoad = async ({ cookies, locals }) => {
     const token = cookies.get('access_token');
 
@@ -41,7 +71,7 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 
             return {
                 id: item.id,
-                fecha: startDate ? new Date(startDate).toLocaleString('es-CL') : 'Pendiente',
+                fecha: formatChileDate(startDate),
                 estado: item.state === 'success' ? 'Exitoso' : (item.state === 'failed' ? 'Fallido' : 'En Progreso'),
                 duracion: duracionStr,
                 registros: 0, // El backend aun no reporta filas procesadas

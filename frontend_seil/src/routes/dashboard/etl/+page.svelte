@@ -119,15 +119,23 @@
     stopPolling();
   });
 
-  // Formatear fecha para el historial
+  // Formatear fecha UTC del backend a hora de Chile 
   function formatDate(isoDate: string): string {
     try {
-      return new Date(isoDate).toLocaleString('es-CL', {
+      // El backend envía fechas en UTC sin 'Z', agregarlo si falta
+      let isoString = isoDate;
+      if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+        isoString = isoDate + 'Z';
+      }
+      
+      return new Date(isoString).toLocaleString('es-CL', {
+        timeZone: 'America/Santiago',
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: false
       });
     } catch {
       return isoDate;

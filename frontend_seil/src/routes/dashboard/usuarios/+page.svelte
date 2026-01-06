@@ -5,6 +5,35 @@
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
+    // Función para formatear fechas UTC del backend a hora de Chile
+    function formatUTCDate(dateString: string | null): string {
+        if (!dateString) return 'Nunca';
+        
+        try {
+            // El backend envía fechas en UTC sin 'Z', agregarlo si falta
+            let isoString = dateString;
+            if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+                isoString = dateString + 'Z';
+            }
+            
+            const date = new Date(isoString);
+            
+            // Formatear en español chileno con zona horaria de Chile
+            return date.toLocaleString('es-CL', {
+                timeZone: 'America/Santiago',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        } catch (error) {
+            console.error('Error formateando fecha:', error);
+            return 'Fecha inválida';
+        }
+    }
+
     // Sincronizar usuarios locales con los datos del servidor para filtrado reactivo
     let usuariosRaw = $derived(data.users || []);
     
@@ -14,7 +43,7 @@
         nombre: u.name || u.username,
         email: u.email,
         rol: u.role === 'ADMIN' ? 'Administrador' : u.role === 'GERENCIA' ? 'Gerente' : 'Analista',
-        ultimoAcceso: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Nunca',
+        ultimoAcceso: formatUTCDate(u.last_login_at),
         estado: u.is_active ? 'Activo' : 'Inactivo',
         fechaCreacion: 'N/A', // La API no parece retornar esto en UserListItem
         area: u.department || 'N/A',
@@ -162,7 +191,7 @@
           <div>
             <p class="text-gray-400 text-sm">Último acceso</p>
             <p class="text-xl font-bold text-white mt-1">
-              {data.stats?.last_access ? new Date(data.stats.last_access).toLocaleDateString() : 'N/A'}
+              {data.stats?.last_access ? formatUTCDate(data.stats.last_access).split(',')[0] : 'N/A'}
             </p>
           </div>
           <div class="h-12 w-12 bg-gradient-to-br from-blue-600/20 to-blue-700/20 rounded-xl flex items-center justify-center">
