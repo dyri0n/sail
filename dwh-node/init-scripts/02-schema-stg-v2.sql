@@ -174,8 +174,8 @@ CREATE TABLE stg_asistencia_diaria (
     -- ID Empleado (última columna en Excel)
     id_empleado INTEGER NOT NULL,          -- Origen: Cargo
     
-    -- Llave primaria compuesta
-    CONSTRAINT pk_stg_asistencia_diaria PRIMARY KEY (asistio_en, id_empleado)
+    -- Llave primaria compuesta (incluye turno para permitir múltiples turnos por día)
+    CONSTRAINT pk_stg_asistencia_diaria PRIMARY KEY (asistio_en, id_empleado, tipo_turno)
 );
 
 COMMENT ON TABLE stg_asistencia_diaria IS 

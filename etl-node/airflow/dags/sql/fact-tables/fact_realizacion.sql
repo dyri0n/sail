@@ -4,7 +4,7 @@ INSERT INTO dwh.fact_realizacion_capacitacion (
     costo_total_curso, duracion_horas_total, dias_extension, 
     total_asistentes, nps_score, satisfaccion_promedio, valoracion_formador
 )
-SELECT 
+SELECT DISTINCT ON (COALESCE(dc.curso_sk, -1), TO_CHAR(s.fecha_inicio, 'YYYYMMDD')::INTEGER)
     TO_CHAR(s.fecha_inicio, 'YYYYMMDD')::INTEGER,
     TO_CHAR(s.fecha_fin, 'YYYYMMDD')::INTEGER,
     COALESCE(dg.gerencia_sk, -1),
@@ -27,6 +27,12 @@ LEFT JOIN dwh.dim_gerencia dg ON TRIM(UPPER(s.gerencia)) = dg.nombre_gerencia
 LEFT JOIN dwh.dim_curso dc ON TRIM(UPPER(s.titulo)) = dc.nombre_curso
 LEFT JOIN dwh.dim_proveedor dp ON TRIM(UPPER(s.formador_proveedor)) = dp.nombre_proveedor
 LEFT JOIN dwh.dim_lugar_realizacion dl ON (CASE WHEN UPPER(s.lugar) LIKE '%ONLINE%' OR UPPER(s.lugar) LIKE '%VIRTUAL%' THEN 'AULA VIRTUAL' ELSE 'OFICINA CENTRAL / NO INFORMADO' END) = dl.lugar
+
+-- Filtrar registros sin título (irían todos a curso_sk=-1 causando duplicados)
+WHERE s.titulo IS NOT NULL AND TRIM(s.titulo) <> ''
+
+-- Ordenar para DISTINCT ON (mantener el registro con más asistentes en caso de duplicado)
+ORDER BY COALESCE(dc.curso_sk, -1), TO_CHAR(s.fecha_inicio, 'YYYYMMDD')::INTEGER, s.nro_asistentes DESC NULLS LAST
 
 -- UPSERT: Business Key (curso_sk, fecha_inicio_sk)
 ON CONFLICT (curso_sk, fecha_inicio_sk) DO UPDATE SET

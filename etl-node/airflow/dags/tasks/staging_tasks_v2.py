@@ -115,6 +115,15 @@ def create_staging_tasks(task_prefix: str = "stg"):
     # =========================================================================
     # FUNCIÓN GENÉRICA DE CARGA
     # =========================================================================
+
+    # Definir columnas de clave primaria por tabla (para eliminar duplicados)
+    PRIMARY_KEYS = {
+        "stg_asistencia_diaria": ["asistio_en", "id_empleado", "tipo_turno"],
+        "stg_realizacion_capacitaciones": ["rut", "nombre_curso"],
+        "stg_participacion_capacitaciones": ["rut", "nombre_curso"],
+        "stg_rotacion_empleados": ["id_empleado"],
+    }
+
     def _cargar_hoja_a_db(sheet: ExcelSheet, info_validacion: dict) -> dict:
         """
         Función genérica para cargar una hoja Excel a su tabla destino.
@@ -132,6 +141,21 @@ def create_staging_tasks(task_prefix: str = "stg"):
 
         # Cargar y transformar datos
         df = loader.cargar(sheet, hoja_resuelta=hoja_resuelta)
+
+        # Eliminar duplicados basándose en la clave primaria de la tabla
+        pk_cols = PRIMARY_KEYS.get(sheet.tabla_nombre, [])
+        if pk_cols:
+            # Verificar que las columnas existan en el DataFrame
+            existing_pk_cols = [col for col in pk_cols if col in df.columns]
+            if existing_pk_cols:
+                registros_antes = len(df)
+                # Mantener el último registro en caso de duplicados
+                df = df.drop_duplicates(subset=existing_pk_cols, keep="last")
+                registros_despues = len(df)
+                if registros_antes != registros_despues:
+                    print(
+                        f"⚠ Se eliminaron {registros_antes - registros_despues} duplicados en columnas {existing_pk_cols}"
+                    )
 
         # Insertar en base de datos
         engine = create_engine(settings.get_stg_uri())
