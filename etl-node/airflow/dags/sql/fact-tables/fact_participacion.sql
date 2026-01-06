@@ -39,7 +39,7 @@ FROM (
     FROM stg.stg_participacion_capacitaciones s
 
     LEFT JOIN dwh.dim_empleado de 
-        ON s.rut = de.rut 
+        ON s.id_empleado::VARCHAR = de.empleado_id_nk
         AND de.scd_es_actual = TRUE
 
     LEFT JOIN dwh.dim_curso dc 

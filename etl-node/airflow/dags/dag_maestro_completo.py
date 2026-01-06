@@ -25,7 +25,7 @@ from tasks.capacitacion_tasks import create_capacitacion_tasks
 from tasks.dimension_tasks import create_dimension_tasks
 from tasks.rotacion_tasks import create_rotacion_tasks
 from tasks.seleccion_tasks import create_seleccion_tasks
-from tasks.staging_tasks import create_staging_tasks
+from tasks.staging_tasks_v2 import create_staging_tasks
 
 from config.settings import settings
 
@@ -98,19 +98,34 @@ with DAG(
 
     # Invocar las tasks (las @task decoradas requieren ser llamadas)
     stg_verificar = stg["verificar"]()
-    stg_cargar_sap = stg["cargar_sap"](stg_verificar)
-    stg_cargar_cap = stg["cargar_capacitaciones"](stg_verificar)
-    stg_cargar_asis_cap = stg["cargar_asistencia_cap"](stg_verificar)
-    stg_cargar_asis = stg["cargar_asistencia"](stg_verificar)
+    stg_cargar_rotacion = stg["cargar_rotacion"](stg_verificar)
+    stg_cargar_cap_realizacion = stg["cargar_capacitaciones_realizacion"](stg_verificar)
+    stg_cargar_cap_participantes = stg["cargar_capacitaciones_participantes"](stg_verificar)
+    stg_cargar_asistencia = stg["cargar_asistencia"](stg_verificar)
     stg_resumen = stg["resumen"](
-        [stg_cargar_sap, stg_cargar_cap, stg_cargar_asis_cap, stg_cargar_asis]
+        [
+            stg_cargar_rotacion,
+            stg_cargar_cap_realizacion,
+            stg_cargar_cap_participantes,
+            stg_cargar_asistencia,
+        ]
     )
 
     # Dependencias staging
     inicio >> desactivar_fk >> stg_verificar >> stg["truncar"]
-    stg["truncar"] >> [stg_cargar_sap, stg_cargar_cap, stg_cargar_asis_cap, stg_cargar_asis]
+    stg["truncar"] >> [
+        stg_cargar_rotacion,
+        stg_cargar_cap_realizacion,
+        stg_cargar_cap_participantes,
+        stg_cargar_asistencia,
+    ]
     (
-        [stg_cargar_sap, stg_cargar_cap, stg_cargar_asis_cap, stg_cargar_asis]
+        [
+            stg_cargar_rotacion,
+            stg_cargar_cap_realizacion,
+            stg_cargar_cap_participantes,
+            stg_cargar_asistencia,
+        ]
         >> stg_resumen
         >> fin_staging
     )

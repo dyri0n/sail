@@ -43,37 +43,41 @@ BEGIN
                 COALESCE(de.empleado_sk, -1),
                 COALESCE(dt.turno_sk, -1),
 
-                -- Timestamps (Fecha + Hora 24hr)
-                (s.asistio_en || ' ' || s.hora_ingreso)::TIMESTAMP,
-                (s.asistio_en || ' ' || s.hora_salida)::TIMESTAMP,
+                -- Timestamps (Fecha + Hora)
+                CASE WHEN s.hora_ingreso IS NOT NULL THEN s.asistio_en + s.hora_ingreso ELSE NULL END,
+                CASE WHEN s.hora_salida IS NOT NULL THEN s.asistio_en + s.hora_salida ELSE NULL END,
 
-                -- Horas trabajadas (formato decimal o nulo)
-                CAST(REPLACE(CAST(s.total_horas AS VARCHAR), ',', '.') AS DECIMAL(5,2)),
-
-                -- Conversión Duración Atraso (H:MM a Minutos Enteros)
-                -- 1:30 -> 90 min, 0:15 -> 15 min, 0:00 -> 0
+                -- Horas trabajadas (extraer de interval a decimal)
                 CASE 
-                    WHEN s.atraso IS NULL OR s.atraso = '0:00' THEN 0
-                    ELSE (SPLIT_PART(s.atraso, ':', 1)::INT * 60) + SPLIT_PART(s.atraso, ':', 2)::INT
-                END,
+                    WHEN s.total_horas IS NULL THEN NULL
+                    ELSE EXTRACT(EPOCH FROM s.total_horas) / 3600.0
+                END::DECIMAL(5,2),
 
-                -- Conversión Duración Adelanto
+                -- Minutos de atraso (extraer de interval)
                 CASE 
-                    WHEN s.adelanto IS NULL OR s.adelanto = '0:00' THEN 0
-                    ELSE (SPLIT_PART(s.adelanto, ':', 1)::INT * 60) + SPLIT_PART(s.adelanto, ':', 2)::INT
-                END,
+                    WHEN s.atraso IS NULL THEN 0
+                    ELSE EXTRACT(EPOCH FROM s.atraso) / 60
+                END::INTEGER,
+
+                -- Minutos de adelanto (extraer de interval)
+                CASE 
+                    WHEN s.adelanto IS NULL THEN 0
+                    ELSE EXTRACT(EPOCH FROM s.adelanto) / 60
+                END::INTEGER,
 
                 s.tipo_permiso,
 
                 -- Flag Atraso (Usando la constante)
                 CASE 
-                    WHEN ((SPLIT_PART(s.atraso, ':', 1)::INT * 60) + SPLIT_PART(s.atraso, ':', 2)::INT) > TOLERANCIA_MIN THEN 1 
+                    WHEN s.atraso IS NULL THEN 0
+                    WHEN (EXTRACT(EPOCH FROM s.atraso) / 60) > TOLERANCIA_MIN THEN 1 
                     ELSE 0 
                 END,
 
                 -- Flag Salida Anticipada
                 CASE 
-                    WHEN ((SPLIT_PART(s.adelanto, ':', 1)::INT * 60) + SPLIT_PART(s.adelanto, ':', 2)::INT) > 0 THEN 1 
+                    WHEN s.adelanto IS NULL THEN 0
+                    WHEN (EXTRACT(EPOCH FROM s.adelanto) / 60) > 0 THEN 1 
                     ELSE 0 
                 END,
 

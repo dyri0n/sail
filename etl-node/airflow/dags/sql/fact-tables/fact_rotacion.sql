@@ -78,7 +78,7 @@ BEGIN
                 ON TRIM(UPPER(s.tipo_empleo)) = dm.tipo_vinculo_legal
                 AND TRIM(UPPER(s.jornada)) = dm.regimen_horario
             LEFT JOIN dwh.dim_empleado de 
-                ON s.rut = de.rut
+                ON s.id_empleado::VARCHAR = de.empleado_id_nk
                 AND s.desde3 BETWEEN de.scd_fecha_inicio_vigencia AND de.scd_fecha_fin_vigencia
             LEFT JOIN dwh.dim_empresa demp 
                 ON CAST(s.id_empresa AS VARCHAR) = demp.codigo

@@ -5,7 +5,7 @@ CREATE TEMPORARY TABLE tmp_empleado_logic AS
 SELECT
     -- Datos de Staging
     s.id_empleado AS id_nk,
-    s.rut,
+    NULL::VARCHAR AS rut,  -- FIX: RUT no disponible en el archivo Excel actual
     s.nombre,
     s.sexo, s.fecha_nacimiento, s.nacionalidad, s.estado_civil,
     NULL::VARCHAR as formacion, -- (Mapear si existe en staging)
