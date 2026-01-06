@@ -4,6 +4,7 @@ import subprocess
 from typing import Dict, Any, Optional
 import json
 from datetime import datetime
+import textwrap  # Added for dedent
 
 class AirflowClient:
     def __init__(self):
@@ -157,46 +158,50 @@ class AirflowClient:
     async def _get_task_xcom_cli(self, dag_id: str, dag_run_id: str, task_id: str, xcom_key: str):
         """Fallback CLI to fetch XCom using python -c"""
         try:
-            # Parse execution_date from run_id (assuming format 'manual__YYYY-MM-DDTHH:MM:SS.ssssss')
-            if '__' not in dag_run_id:
-                raise ValueError("Invalid run_id format")
-            execution_date_str = dag_run_id.split('__')[1]
-            datetime.fromisoformat(execution_date_str)  # Validate
+            # Build Python snippet with dedent and error handling
+            code_snippet = textwrap.dedent(f"""
+                import warnings
+                warnings.filterwarnings("ignore")
+                from airflow.models.xcom import XCom
+                from airflow.settings import Session
+                import traceback
 
-            # Build Python snippet
-            code_snippet = f"""
-from airflow.models import XCom
-from airflow.utils.db import provide_session
-from datetime import datetime
-
-@provide_session
-def fetch_xcom(session=None):
-    xcom = XCom.get_one(
-        execution_date=datetime.fromisoformat('{execution_date_str}'),
-        key='{xcom_key}',
-        task_id='{task_id}',
-        dag_id='{dag_id}',
-        include_prior_dates=True  # If needed for manual runs
-    )
-    print(xcom.value if xcom else 'None')
-
-fetch_xcom()
-"""
+                try:
+                    session = Session()
+                    xcom = session.query(XCom).filter(
+                        XCom.dag_id == '{dag_id}',
+                        XCom.task_id == '{task_id}',
+                        XCom.run_id == '{dag_run_id}',
+                        XCom.key == '{xcom_key}'
+                    ).first()
+                    print(xcom.value if xcom else 'None')
+                    session.close()
+                except Exception as e:
+                    print('Error: ' + str(e))
+                    print(traceback.format_exc())
+            """)
 
             cmd = ["docker", "exec", self.container_name, "python", "-c", code_snippet]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            output = res.stdout.strip()
+            error = res.stderr.strip()
             if res.returncode == 0:
-                output = res.stdout.strip()
                 if output == 'None':
                     print("    -> CLI: No XCom found")
+                    return None
+                if output.startswith('Error: '):
+                    print(f"    -> CLI Error: {output}")
                     return None
                 # Assume output is the value (e.g., int or str); parse if needed
                 try:
                     return int(output)  # If count is int
                 except ValueError:
-                    return output  # Else str or json.loads if dict
+                    try:
+                        return json.loads(output)  # If JSON
+                    except:
+                        return output  # Else str
             else:
-                print(f"[WARN] CLI XCom failed: {res.stderr[:200]}")
+                print(f"[WARN] CLI XCom failed (rc={res.returncode}): stdout={output[:200]}, stderr={error[:200]}")
                 return None
         except Exception as e:
             print(f"[ERROR] CLI XCom error: {e}")

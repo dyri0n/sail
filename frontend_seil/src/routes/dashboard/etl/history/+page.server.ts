@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
                 fecha: startDate ? new Date(startDate).toLocaleString('es-CL') : 'Pendiente',
                 estado: item.state === 'success' ? 'Exitoso' : (item.state === 'failed' ? 'Fallido' : 'En Progreso'),
                 duracion: duracionStr,
-                registros: item.details?.total_registros || 0,
+                registros: 0, // El backend aun no reporta filas procesadas
                 usuario: 'Admin', // TODO: Traer nombre real del usuario si está disponible
                 detalles: `Run ID: ${item.dag_run_id}`
             };
@@ -52,13 +52,13 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 
         // Calcular estadísticas reales
         const total = history.length;
-        const exitosos = history.filter(h => h.estado === 'Exitoso').length;
+        const exitosos = history.filter((h: any) => h.estado === 'Exitoso').length;
         const tasaExito = total > 0 ? Math.round((exitosos / total) * 100) + '%' : '0%';
 
         // Calcular duración promedio (solo de los que tienen duración parseable)
         let totalSeconds = 0;
         let countDuration = 0;
-        rawHistory.forEach(h => {
+        rawHistory.forEach((h: any) => {
             if (h.duration) {
                 totalSeconds += h.duration;
                 countDuration++;

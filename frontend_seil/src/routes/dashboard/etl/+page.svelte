@@ -283,7 +283,7 @@
             <p class="text-sm">No hay ejecuciones registradas</p>
           </div>
         {:else}
-          {#each data.historial as item, i}
+          {#each data.historial.slice(0, 5) as item, i}
             <div class="group relative p-3 lg:p-4 rounded-xl border border-gray-700 hover:border-red-500/50 bg-gray-800/30 hover:bg-gray-800/80 transition-all duration-200">
               <div class="flex items-center">
                 <div class={`h-10 w-10 lg:h-12 lg:w-12 rounded-xl flex items-center justify-center mr-3 lg:mr-4 shrink-0

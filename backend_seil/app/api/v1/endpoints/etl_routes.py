@@ -80,30 +80,11 @@ async def get_history(
     
     # Formatear respuesta
     history = []
-    
-    # Optimización: Solo buscar detalles para las últimas 5 ejecuciones para no saturar
-    # (Las llamadas CLI son lentas)
-    for i, exec in enumerate(executions):
+    for exec in executions:
         duration = None
         if exec.start_date and exec.end_date:
             duration = int((exec.end_date - exec.start_date).total_seconds())
         
-        details = {}
-        # Solo intentar obtener XCom para las primeras 5 y si son de los DAGs conocidos
-        if i < 5 and exec.dag_id in ["00_carga_excel_staging", "01_etl_conformed"] and exec.state.value in ["success", "failed", "running"]:
-            task_resumen = "stg_resumen" if exec.dag_id == "00_carga_excel_staging" else "dw_resumen"
-            try:
-                xcom_data = await airflow_client.get_task_xcom(
-                     exec.dag_id,
-                     exec.dag_run_id,
-                     task_resumen
-                )
-                if xcom_data and isinstance(xcom_data, dict):
-                     details = xcom_data
-                     print(f"[DEBUG HIST] XCom para {exec.id}: {details}")
-            except Exception as e:
-                print(f"[WARN] Error XCom history: {e}")
-
         history.append({
             "id": exec.id,
             "dag_id": exec.dag_id,
@@ -112,8 +93,7 @@ async def get_history(
             "state": exec.state.value,
             "start_date": exec.start_date.isoformat() if exec.start_date else None,
             "end_date": exec.end_date.isoformat() if exec.end_date else None,
-            "duration": duration,
-            "details": details
+            "duration": duration
         })
     
     return {"history": history}
@@ -181,27 +161,6 @@ async def get_status(
     progress = int((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
     
     print(f"[DEBUG] Progreso: {completed_tasks}/{total_tasks} tareas = {progress}%")
-
-    # Extraer métricas adicionales (registros procesados) si es el DAG de staging
-    details = {}
-    if execution.dag_id in ["00_carga_excel_staging", "01_etl_conformed"]:
-        task_resumen = "stg_resumen" if execution.dag_id == "00_carga_excel_staging" else "dw_resumen" # Ajustar nombre task si es necesario
-        
-        # Intentar obtener XCom
-        try:
-             # Solo si la ejecución está avanzada (running o success o failed)
-            if execution.state.value in ["success", "failed", "running"]:
-                 xcom_data = await airflow_client.get_task_xcom(
-                     execution.dag_id,
-                     execution.dag_run_id,
-                     task_resumen
-                 )
-                 if xcom_data and isinstance(xcom_data, dict):
-                     details = xcom_data
-                     print(f"[DEBUG] Detalles obtenidos de XCom: {details}")
-        except Exception as e:
-            print(f"[WARN] No se pudieron obtener detalles de XCom: {e}")
-    
     
     # Formatear tareas
     tasks = []
@@ -221,9 +180,7 @@ async def get_status(
         "state": execution.state.value,
         "start_date": execution.start_date.isoformat() if execution.start_date else None,
         "end_date": execution.end_date.isoformat() if execution.end_date else None,
-        "end_date": execution.end_date.isoformat() if execution.end_date else None,
         "progress": progress,
-        "details": details,
         "tasks": tasks
     }
 
