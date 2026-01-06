@@ -25,7 +25,7 @@ SELECT DISTINCT
     - 
     ((REGEXP_MATCHES(tipo_turno, '^(\d{2}:\d{2})\s?-\s?(\d{2}:\d{2})\((\d+)\s?.+\)'))[3]::INTEGER / 60.0)
 
-FROM stg.stg_asistencia_diaria_geovictoria
+FROM stg.stg_asistencia_diaria
 WHERE tipo_turno SIMILAR TO '\d{2}:\d{2}\s?-\s?\d{2}:\d{2}\(\d+\s?.+\)' -- Solo procesamos los que cumplen el formato
 
 ON CONFLICT (nombre_turno) DO UPDATE SET
@@ -37,6 +37,6 @@ ON CONFLICT (nombre_turno) DO UPDATE SET
 -- Insertamos los "Otros" (Descanso, No Planificado) sin horas
 INSERT INTO dwh.dim_turno (nombre_turno)
 SELECT DISTINCT TRIM(tipo_turno)
-FROM stg.stg_asistencia_diaria_geovictoria
+FROM stg.stg_asistencia_diaria
 WHERE tipo_turno NOT SIMILAR TO '\d{2}:\d{2}\s?-\s?\d{2}:\d{2}\(\d+\s?.+\)'
 ON CONFLICT (nombre_turno) DO NOTHING;

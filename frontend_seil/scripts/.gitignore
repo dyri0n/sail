@@ -1,0 +1,8 @@
+# Archivos PID
+*.pid
+
+# Scripts temporales generados
+temp_*.ps1
+
+# Logs (se guardan en ../logs/)
+*.log

@@ -7,5 +7,5 @@ SELECT DISTINCT
     END,
     'ARICA Y PARINACOTA', -- FIX: Valor fijo (no viene en staging)
     'CHILE'
-FROM stg.stg_capacitaciones_resumen
+FROM stg.stg_realizacion_capacitaciones
 ON CONFLICT (lugar) DO NOTHING;

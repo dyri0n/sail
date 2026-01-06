@@ -8,11 +8,11 @@ DECLARE
     count_dwh INTEGER;
 BEGIN
     -- 1. Iteramos por cada fecha distinta presente en el Staging
-    FOR fecha_rec IN SELECT DISTINCT asistio_en FROM stg.stg_asistencia_diaria_geovictoria LOOP
+    FOR fecha_rec IN SELECT DISTINCT asistio_en FROM stg.stg_asistencia_diaria LOOP
         
         -- 2. Obtenemos conteos
         SELECT COUNT(*) INTO count_stg 
-        FROM stg.stg_asistencia_diaria_geovictoria 
+        FROM stg.stg_asistencia_diaria 
         WHERE asistio_en = fecha_rec.asistio_en;
         
         SELECT COUNT(*) INTO count_dwh 
@@ -85,7 +85,7 @@ BEGIN
 
                 TOLERANCIA_MIN -- Guardamos qué regla se aplicó
 
-            FROM stg.stg_asistencia_diaria_geovictoria s
+            FROM stg.stg_asistencia_diaria s
             LEFT JOIN dwh.dim_permiso dp ON TRIM(s.tipo_permiso) = dp.codigo_permiso_nk
             LEFT JOIN dwh.dim_turno dt ON TRIM(s.tipo_turno) = dt.nombre_turno
             -- Join SCD2 Empleado

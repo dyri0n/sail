@@ -7,3 +7,5 @@ passlib
 bcrypt==3.2.0
 httpx
 aiohttp
+tzdata
+email-validator
