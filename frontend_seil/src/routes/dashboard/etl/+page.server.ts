@@ -1,18 +1,39 @@
-export async function load() {
-    return {
-        historial: [
-            { id: 1, fecha: '2023-10-25 14:30', estado: 'Exitoso', duracion: '2m 15s' },
-            { id: 2, fecha: '2023-10-24 09:15', estado: 'Fallido', duracion: '45s' },
-            { id: 3, fecha: '2023-10-23 18:00', estado: 'Exitoso', duracion: '2m 10s' },
-            { id: 4, fecha: '2023-10-22 10:00', estado: 'Exitoso', duracion: '2m 20s' },
-            { id: 5, fecha: '2023-10-21 15:45', estado: 'Exitoso', duracion: '2m 12s' },
-        ],
-        logs: [
-            { timestamp: '14:30:01', nivel: 'INFO', mensaje: 'Iniciando proceso ETL...' },
-            { timestamp: '14:30:05', nivel: 'INFO', mensaje: 'Conexión a base de datos establecida.' },
-            { timestamp: '14:30:15', nivel: 'WARN', mensaje: 'Transformación lenta en tabla de usuarios.' },
-            { timestamp: '14:31:00', nivel: 'INFO', mensaje: 'Carga de datos completada.' },
-            { timestamp: '14:32:15', nivel: 'SUCCESS', mensaje: 'Proceso finalizado correctamente.' },
-        ]
-    };
-}
+import type { PageServerLoad } from './$types';
+import { getHistory } from '$lib/services/etl.service';
+import { redirect } from '@sveltejs/kit';
+
+export const load: PageServerLoad = async ({ cookies }) => {
+    // 1. Obtener token desde las cookies
+    const token = cookies.get('access_token');
+
+    if (!token) {
+        // Si no hay sesión, redirigir al login
+        throw redirect(302, '/login');
+    }
+
+    try {
+        // 2. Llamar al backend para obtener el historial
+        const historialData = await getHistory(token);
+
+        return {
+            historial: historialData.history || [],
+            logs: historialData.recent_logs || [],
+            user: {
+                nombre: cookies.get('user_nombre') || 'Administrador'
+            },
+            // Pasar el token al cliente para que pueda hacer requests
+            token: token
+        };
+    } catch (error) {
+        console.error('Error cargando datos ETL:', error);
+
+        // En caso de error, devolver datos vacíos
+        return {
+            historial: [],
+            logs: [],
+            user: { nombre: 'Administrador' },
+            error: 'No se pudo cargar el historial de ejecuciones',
+            token: token  // Pasar el token incluso si falla
+        };
+    }
+};

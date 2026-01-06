@@ -1,24 +1,19 @@
 <script lang="ts">
-  // Definir interfaces para los datos
-  interface HistorialItem {
-    id?: number; // Agregado opcional según tu server.ts
-    fecha: string;
-    estado: 'Exitoso' | 'Fallido';
-    duracion: string;
-  }
+  import { onMount, onDestroy } from 'svelte';
+  import { triggerETL, getExecutionStatus } from '$lib/services/etl.service';
+  import type { ETLExecution, LogEntry } from '$lib/services/etl.service';
+  import { invalidateAll } from '$app/navigation';
+  import { browser } from '$app/environment';
 
-  interface LogItem {
-    timestamp: string;
-    nivel: 'INFO' | 'WARN' | 'SUCCESS' | 'ERROR';
-    mensaje: string;
-  }
-
+  // Interfaz para los datos recibidos del servidor
   interface EtlData {
-    historial: HistorialItem[];
-    logs: LogItem[];
+    historial: ETLExecution[];
+    logs: LogEntry[];
     user?: {
       nombre: string;
     };
+    error?: string;
+    token?: string;  // Token pasado desde el servidor
   }
 
   // Tipar la prop data
@@ -26,24 +21,152 @@
 
   let isRunning = false;
   let progress = 0;
+  let currentExecutionId: string | null = null;
+  let errorMessage = '';
+  let pollInterval: any = null;
 
-  function runEtl() {
-    isRunning = true;
-    progress = 0;
+  async function runEtl() {
+    // Usar el token que viene del servidor
+    const token = data.token;
     
-    // Simulación de progreso
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setTimeout(() => {
+    if (!token) {
+      errorMessage = 'No tienes una sesión activa. Por favor, inicia sesión nuevamente.';
+      return;
+    }
+
+    isRunning = true;
+    progress = 10;
+    errorMessage = '';
+
+    try {
+      // 1. Disparar el DAG en Airflow vía backend
+      const response = await triggerETL('00_carga_excel_staging', token);
+      currentExecutionId = response.execution_id;
+      
+      console.log('ETL iniciado:', response);
+      
+      // 2. Iniciar polling del estado
+      startPolling();
+
+      // 3. Simular progreso visual básico
+      const progressInterval = setInterval(() => {
+        if (progress < 90) {
+          progress += Math.random() * 10;
+        }
+      }, 1000);
+
+      // Detener progreso visual después de 30s
+      setTimeout(() => clearInterval(progressInterval), 30000);
+
+    } catch (error: any) {
+      console.error('Error ejecutando ETL:', error);
+      errorMessage = error.message || 'Error al iniciar el proceso ETL. Verifica que el backend esté activo.';
+      isRunning = false;
+      progress = 0;
+    }
+  }
+
+  function startPolling() {
+    if (!currentExecutionId || !data.token) return;
+
+    // Consultar el estado cada 3 segundos
+    pollInterval = setInterval(async () => {
+      if (!currentExecutionId || !data.token) return;
+
+      try {
+        const status = await getExecutionStatus(currentExecutionId, data.token);
+        
+        console.log('Estado actual:', status.state);
+        
+        // Actualizar progreso según el estado
+        if (status.state === 'running' || status.state === 'queued') {
+          progress = Math.min(progress + 5, 95);
+        } else if (status.state === 'success') {
+          progress = 100;
+          stopPolling();
+          
+          // Recargar la página para mostrar el nuevo historial
+          await invalidateAll();
+          
+          setTimeout(() => {
+            isRunning = false;
+            progress = 0;
+            currentExecutionId = null;
+          }, 2000);
+          
+        } else if (status.state === 'failed') {
+          errorMessage = 'La ejecución falló. Revisa los logs para más detalles.';
+          stopPolling();
           isRunning = false;
           progress = 0;
-        }, 1000);
+          currentExecutionId = null;
+        }
+      } catch (error) {
+        console.error('Error chequeando estado:', error);
+        // No detener el polling por un error temporal
       }
-    }, 300);
+    }, 3000);
   }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  onDestroy(() => {
+    stopPolling();
+  });
+
+  // Formatear fecha para el historial
+  function formatDate(isoDate: string): string {
+    try {
+      return new Date(isoDate).toLocaleString('es-CL', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return isoDate;
+    }
+  }
+
+  // Mapear estados del backend a estados del frontend
+  function mapState(state: string): 'Exitoso' | 'Fallido' {
+    if (state === 'success') return 'Exitoso';
+    if (state === 'failed' || state === 'failed') return 'Fallido';
+    return 'Fallido'; // Por defecto
+  }
+
+  // Calcular duración
+  function calculateDuration(start?: string, end?: string): string {
+    if (!start || !end) return 'N/A';
+    
+    try {
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      const diffMs = endDate.getTime() - startDate.getTime();
+      
+      if (diffMs < 0) return 'N/A';
+      
+      const minutes = Math.floor(diffMs / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+      
+      return `${minutes}m ${seconds}s`;
+    } catch {
+      return 'N/A';
+    }
+  }
+
+  // Mostrar error inicial si existe
+  onMount(() => {
+    if (data.error) {
+      errorMessage = data.error;
+    }
+  });
 </script>
 
 <div class="flex flex-col gap-4 lg:gap-6 w-full min-h-full">
@@ -120,6 +243,15 @@
         {/if}
       </button>
 
+      {#if errorMessage}
+        <p class="mt-4 lg:mt-6 text-xs lg:text-sm text-red-400 bg-red-900/20 p-3 rounded-lg border border-red-600/30 flex items-center justify-center">
+          <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {errorMessage}
+        </p>
+      {/if}
+
       {#if isRunning}
         <p class="mt-4 lg:mt-6 text-xs lg:text-sm text-red-400 animate-pulse flex items-center justify-center">
           <svg class="w-3 h-3 lg:w-4 lg:h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -155,11 +287,11 @@
             <div class="group relative p-3 lg:p-4 rounded-xl border border-gray-700 hover:border-red-500/50 bg-gray-800/30 hover:bg-gray-800/80 transition-all duration-200">
               <div class="flex items-center">
                 <div class={`h-10 w-10 lg:h-12 lg:w-12 rounded-xl flex items-center justify-center mr-3 lg:mr-4 shrink-0
-                  ${item.estado === 'Exitoso' 
+                  ${mapState(item.state) === 'Exitoso' 
                     ? 'bg-green-900/20 text-green-400 border border-green-600/20' 
                     : 'bg-red-900/20 text-red-400 border border-red-600/20'
                   }`}>
-                  {#if item.estado === 'Exitoso'}
+                  {#if mapState(item.state) === 'Exitoso'}
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                     </svg>
@@ -170,12 +302,12 @@
                   {/if}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-xs lg:text-sm font-medium text-white truncate">{item.fecha}</p>
+                  <p class="text-xs lg:text-sm font-medium text-white truncate">{formatDate(item.start_date || item.execution_date)}</p>
                   <div class="flex justify-between items-center mt-1">
-                    <span class={`text-[10px] lg:text-xs font-medium px-2 py-0.5 lg:py-1 rounded-full ${item.estado === 'Exitoso' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {item.estado}
+                    <span class={`text-[10px] lg:text-xs font-medium px-2 py-0.5 lg:py-1 rounded-full ${mapState(item.state) === 'Exitoso' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      {mapState(item.state)}
                     </span>
-                    <span class="text-[10px] lg:text-xs text-gray-400 font-mono">{item.duracion}</span>
+                    <span class="text-[10px] lg:text-xs text-gray-400 font-mono">{calculateDuration(item.start_date, item.end_date)}</span>
                   </div>
                 </div>
               </div>
@@ -220,12 +352,12 @@
           <div class="flex gap-2 lg:gap-4 hover:bg-gray-800/30 px-2 py-0.5 rounded transition-colors">
             <span class="text-gray-500 select-none shrink-0">[{log.timestamp}]</span>
             <span class={`break-all ${
-              log.nivel === 'INFO' ? 'text-blue-400' : 
-              log.nivel === 'WARN' ? 'text-yellow-400' : 
-              log.nivel === 'SUCCESS' ? 'text-green-400' : 
-              log.nivel === 'ERROR' ? 'text-red-400' : 'text-gray-300'
+              log.level === 'INFO' ? 'text-blue-400' : 
+              log.level === 'WARN' ? 'text-yellow-400' : 
+              log.level === 'SUCCESS' ? 'text-green-400' : 
+              log.level === 'ERROR' ? 'text-red-400' : 'text-gray-300'
             }`}>
-              <span class="font-bold">{log.nivel}:</span> {log.mensaje}
+              <span class="font-bold">{log.level}:</span> {log.message}
             </span>
           </div>
         {/each}

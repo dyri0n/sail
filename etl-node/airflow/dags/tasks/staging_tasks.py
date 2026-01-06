@@ -379,8 +379,11 @@ def create_staging_tasks(task_prefix: str = "stg"):
         print("-" * 60)
         print(f"  TOTAL: {total_registros} registros")
         print("=" * 60 + "\n")
-        return {"total_registros": total_registros}
-
+        
+        # Hacer push explícito del conteo con un key específico
+        context['task_instance'].xcom_push(key='row_count', value=total_registros)
+        
+        return total_registros  # Esto también se guarda como 'return_value'
     return {
         "verificar": verificar_formato,
         "truncar": truncar,

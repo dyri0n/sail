@@ -14,6 +14,9 @@ x-airflow-common: &airflow-common
     AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-clave-secreta-desarrollo-cambiar-en-prod}
     # CRÍTICO para Airflow 3.x: JWT secret compartido para autenticación entre componentes
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-mi-jwt-secret-compartido-cambiar-en-prod}
+    # Para Airflow 3.x: Habilitar Basic Auth en FAB para la API
+    AIRFLOW__FAB__AUTH_TYPE: "AUTH_DB"
+    AIRFLOW__FAB__AUTH_RATE_LIMITED: "False"
     # Configuración para testing/desarrollo
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs
@@ -99,8 +102,7 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test:
-        ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -151,7 +153,7 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: [ "CMD", "pg_isready", "-U", "airflow" ]
       interval: 10s
       timeout: 5s
       retries: 5

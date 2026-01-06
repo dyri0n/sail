@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 
@@ -24,3 +25,6 @@ class User(Base):
 
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=now_chile)
+    
+    # Relación con ETL executions
+    etl_executions = relationship("ETLExecution", back_populates="triggered_by")

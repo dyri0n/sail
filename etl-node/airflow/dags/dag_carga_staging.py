@@ -30,7 +30,7 @@ from tasks.staging_tasks import create_staging_tasks
 default_args = {
     "owner": "data-team",
     "start_date": datetime.now() - timedelta(days=1),
-    "retries": 2,
+    "retries": 5,
     "retry_delay": timedelta(minutes=5),
 }
 

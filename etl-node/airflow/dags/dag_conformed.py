@@ -12,12 +12,15 @@ from airflow import DAG
 from airflow.providers.standard.operators.empty import EmptyOperator
 
 from tasks.dimension_tasks import create_dimension_tasks
+from callbacks.etl_logger import notify_task_complete, notify_dag_complete
 
 default_args = {
     "owner": "data-team",
     "start_date": datetime.now() - timedelta(days=1),
     "retries": 1,
     "email_on_failure": False,
+    "on_success_callback": notify_task_complete,
+    "on_failure_callback": notify_task_complete,
 }
 
 with DAG(
@@ -28,6 +31,8 @@ with DAG(
     catchup=False,
     tags=["dwh", "dimensiones", "produccion"],
     template_searchpath=["/opt/airflow/dags/sql"],
+    on_success_callback=notify_dag_complete,
+    on_failure_callback=notify_dag_complete,
 ) as dag:
     start = EmptyOperator(task_id="inicio_carga")
     fin = EmptyOperator(task_id="fin_carga_dims")
