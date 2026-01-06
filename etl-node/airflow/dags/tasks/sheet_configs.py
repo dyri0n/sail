@@ -8,7 +8,7 @@ Cada ExcelSheet representa una hoja individual de un archivo Excel
 y su tabla destino en staging.
 """
 
-from tasks.excel_loader import Column, ColumnType, ExcelSheet, col, parse_fecha_asistencia
+from tasks.excel_loader import ColumnType, ExcelSheet, col, parse_fecha_asistencia
 
 # =============================================================================
 # CONSTANTES
@@ -99,7 +99,7 @@ ASISTENCIA_DIARIA = ExcelSheet(
         col("Cargo", "id_empleado", ColumnType.INTEGER, required=True),
     ],
     transformaciones={
-        "asistio_en": parse_fecha_asistencia,  # Parsea "Lun 29-04-2024 (F)" -> date
+        "asistio_en": parse_fecha_asistencia,  # Parsea "Lun 29-04-2024" -> date
     },
     drop_na_subset=["id_empleado", "asistio_en"],
 )

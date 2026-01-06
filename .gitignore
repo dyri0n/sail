@@ -54,6 +54,7 @@ htmlcov/
 *.log
 *.tmp
 logs/
+*.pid
 
 # ------------------------------------------------------------------
 # 4. Airflow y Docker (Archivos generados en esta arquitectura)

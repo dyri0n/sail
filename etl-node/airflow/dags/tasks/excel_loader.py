@@ -8,11 +8,11 @@ parametrizada y reutilizable. El grano mínimo es una hoja individual.
 from __future__ import annotations
 
 import fnmatch
-import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 from airflow.exceptions import AirflowException
