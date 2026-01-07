@@ -9,6 +9,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 COPY ./init-scripts/01-users.sql /docker-entrypoint-initdb.d/01-users.sql
 COPY ./init-scripts/02-schema-stg-v2.sql /docker-entrypoint-initdb.d/02-schema-stg.sql
 COPY ./init-scripts/03-schema-dwh.sql /docker-entrypoint-initdb.d/03-schema-dwh.sql
+COPY ./init-scripts/04-views-analytics.sql /docker-entrypoint-initdb.d/04-views-analytics.sql
 
 # Puerto por defecto
 EXPOSE 5432
