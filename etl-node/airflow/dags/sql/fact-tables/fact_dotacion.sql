@@ -47,5 +47,5 @@ JOIN dwh.dim_modalidad_contrato dm ON f.modalidad_sk = dm.modalidad_sk
 JOIN dwh.dim_medida_aplicada dma ON f.medida_sk = dma.medida_sk
 
 WHERE 
-    -- Excluir bajas definitivas del stock activo
-    UPPER(dma.tipo_movimiento) NOT IN ('BAJA', 'DESPIDO', 'RENUNCIA');
+    -- Excluir bajas definitivas del stock activo (solo 'BAJA' según datos reales del Excel)
+    UPPER(dma.tipo_movimiento) NOT IN ('BAJA');

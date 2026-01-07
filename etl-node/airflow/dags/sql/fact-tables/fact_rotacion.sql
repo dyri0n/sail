@@ -1,21 +1,23 @@
 -- =================================================================
 -- CONFIGURACIÓN: CLASES DE MEDIDA PARA HEADCOUNT
 -- =================================================================
+-- Valores reales del Excel (data_rotaciones.xlsx):
+--   - "Contratación"           -> +1 (alta)
+--   - "Reingreso a la empresa" -> +1 (alta)
+--   - "Baja"                   -> -1 (baja)
+--   - "Cambio de contrato"     ->  0 (sin cambio headcount)
+-- =================================================================
 DO $$
 DECLARE
     -- Clases que suman headcount (+1)
     CLASES_ALTA CONSTANT TEXT[] := ARRAY[
-        'ALTA',
-        'CONTRATACION',
-        'REINGRESO'
+        'CONTRATACIÓN',
+        'REINGRESO A LA EMPRESA'
     ];
     
     -- Clases que restan headcount (-1)
     CLASES_BAJA CONSTANT TEXT[] := ARRAY[
-        'BAJA',
-        'DESPIDO',
-        'RENUNCIA',
-        'TERMINO'
+        'BAJA'
     ];
     
     fecha_rec RECORD;
@@ -143,8 +145,8 @@ BEGIN
             DATE_TRUNC('month', t.fecha)::DATE = ANY(meses_afectados)
             -- Excluir registros sin empleado válido (evita duplicados en PK)
             AND f.empleado_sk > 0
-            -- Excluir bajas del stock activo
-            AND UPPER(dma.tipo_movimiento) NOT IN ('BAJA', 'DESPIDO', 'RENUNCIA', 'TERMINO');
+            -- Excluir bajas del stock activo (solo 'BAJA' según datos reales del Excel)
+            AND UPPER(dma.tipo_movimiento) NOT IN ('BAJA');
             
     END IF;
     
