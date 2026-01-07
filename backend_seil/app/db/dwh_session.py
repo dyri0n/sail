@@ -2,9 +2,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 # Conexión al Data Warehouse (puerto 6000)
+# Usuario: dwh_admin, Database: rrhh_prod
 DWH_DATABASE_URL = (
     "postgresql+psycopg2://"
-    "dwh_admin:dwh_secret@localhost:6000/sail_dwh"
+    "dwh_admin:sail-rrhh-p4@localhost:6000/rrhh_prod"
 )
 
 dwh_engine = create_engine(DWH_DATABASE_URL)

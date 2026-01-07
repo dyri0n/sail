@@ -152,12 +152,15 @@ class DWHMetricsService:
         
         # Headcount actual (último snapshot)
         query_headcount_actual = text("""
-            SELECT SUM(headcount)
+            SELECT COALESCE(SUM(headcount), 0) as total_headcount
             FROM dwh.fact_dotacion_snapshot fds
             JOIN dwh.dim_tiempo dt ON fds.mes_cierre_sk = dt.tiempo_sk
-            WHERE dt.fecha <= :end_date
-            ORDER BY dt.fecha DESC
-            LIMIT 1
+            WHERE dt.fecha = (
+                SELECT MAX(dt2.fecha)
+                FROM dwh.fact_dotacion_snapshot fds2
+                JOIN dwh.dim_tiempo dt2 ON fds2.mes_cierre_sk = dt2.tiempo_sk
+                WHERE dt2.fecha <= :end_date
+            )
         """)
         
         headcount_actual = self.db.execute(
