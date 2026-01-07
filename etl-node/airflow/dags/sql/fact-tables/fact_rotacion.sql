@@ -111,57 +111,67 @@ BEGIN
     END LOOP;
     
     -- =================================================================
-    -- PASO 2: REGENERAR SNAPSHOTS DE MESES AFECTADOS
+    -- PASO 2: REGENERAR SNAPSHOTS INCREMENTALMENTE
     -- =================================================================
+    -- Estrategia: Regenerar desde el mes más antiguo afectado hasta el mes actual.
+    -- Esto cubre tanto los meses donde hubo movimientos como los meses futuros
+    -- donde los empleados siguen vigentes.
+    
     IF array_length(meses_afectados, 1) > 0 THEN
-        
-        -- Eliminar duplicados de meses
-        meses_afectados := ARRAY(SELECT DISTINCT unnest(meses_afectados));
-        
-        RAISE NOTICE 'Regenerando snapshots para % meses afectados', array_length(meses_afectados, 1);
-        
-        -- Borrar snapshots de los meses afectados
-        DELETE FROM dwh.fact_dotacion_snapshot 
-        WHERE mes_cierre_sk IN (
-            SELECT TO_CHAR((DATE_TRUNC('month', m) + INTERVAL '1 month - 1 day')::DATE, 'YYYYMMDD')::INTEGER
-            FROM unnest(meses_afectados) AS m
-        );
-        
-        -- Regenerar snapshots solo para meses afectados
-        -- Usar DISTINCT ON para evitar duplicados cuando un empleado tiene múltiples movimientos en el mes
-        INSERT INTO dwh.fact_dotacion_snapshot (
-            mes_cierre_sk, empleado_sk, cargo_sk, empresa_sk, modalidad_sk,
-            headcount, fte_real, horas_capacidad_mensual, sueldo_base_mensual, antiguedad_meses
-        )
-        SELECT DISTINCT ON (t.tiempo_sk, f.empleado_sk)
-            t.tiempo_sk AS mes_cierre_sk,
-            f.empleado_sk,
-            f.cargo_sk,
-            f.empresa_sk,
-            f.modalidad_sk,
-            1 AS headcount,
-            COALESCE(dmod.fte_estandar, 1.0) AS fte_real,
-            ROUND(180 * COALESCE(dmod.fte_estandar, 1.0)) AS horas_capacidad,
-            f.sueldo_base_intervalo,
-            (EXTRACT(YEAR FROM t.fecha) - EXTRACT(YEAR FROM TO_DATE(f.fecha_inicio_vigencia_sk::text, 'YYYYMMDD'))) * 12 +
-            (EXTRACT(MONTH FROM t.fecha) - EXTRACT(MONTH FROM TO_DATE(f.fecha_inicio_vigencia_sk::text, 'YYYYMMDD')))
-        FROM dwh.fact_rotacion f
-        JOIN dwh.dim_tiempo t 
-            ON t.fecha >= TO_DATE(f.fecha_inicio_vigencia_sk::text, 'YYYYMMDD')
-            AND t.fecha <= TO_DATE(f.fecha_fin_vigencia_sk::text, 'YYYYMMDD')
-            AND EXTRACT(MONTH FROM t.fecha) != EXTRACT(MONTH FROM (t.fecha + INTERVAL '1 day'))
-        JOIN dwh.dim_modalidad_contrato dmod ON f.modalidad_sk = dmod.modalidad_sk
-        JOIN dwh.dim_medida_aplicada dma ON f.medida_sk = dma.medida_sk
-        WHERE 
-            -- Solo snapshots de meses afectados
-            DATE_TRUNC('month', t.fecha)::DATE = ANY(meses_afectados)
-            -- Excluir registros sin empleado válido (evita duplicados en PK)
-            AND f.empleado_sk > 0
-            -- Excluir bajas del stock activo (solo 'BAJA' según datos reales del Excel)
-            AND UPPER(dma.tipo_movimiento) NOT IN ('BAJA')
-        -- Ordenar para que DISTINCT ON tome el registro más reciente del mes
-        ORDER BY t.tiempo_sk, f.empleado_sk, f.fecha_inicio_vigencia_sk DESC;
+        DECLARE
+            mes_minimo DATE;
+            mes_maximo DATE;
+        BEGIN
+            -- Obtener el rango de meses a regenerar
+            mes_minimo := (SELECT MIN(m) FROM unnest(meses_afectados) AS m);
+            mes_maximo := DATE_TRUNC('month', CURRENT_DATE)::DATE;
             
+            RAISE NOTICE 'Regenerando snapshots desde % hasta %', mes_minimo, mes_maximo;
+            
+            -- Borrar snapshots desde el mes mínimo afectado en adelante
+            DELETE FROM dwh.fact_dotacion_snapshot 
+            WHERE mes_cierre_sk >= TO_CHAR((mes_minimo + INTERVAL '1 month - 1 day')::DATE, 'YYYYMMDD')::INTEGER;
+            
+            -- Regenerar snapshots para el rango afectado
+            -- Considera TODOS los empleados vigentes en cada mes, no solo los que iniciaron ahí
+            INSERT INTO dwh.fact_dotacion_snapshot (
+                mes_cierre_sk, empleado_sk, cargo_sk, empresa_sk, modalidad_sk,
+                headcount, fte_real, horas_capacidad_mensual, sueldo_base_mensual, antiguedad_meses
+            )
+            SELECT DISTINCT ON (t.tiempo_sk, f.empleado_sk)
+                t.tiempo_sk AS mes_cierre_sk,
+                f.empleado_sk,
+                f.cargo_sk,
+                f.empresa_sk,
+                f.modalidad_sk,
+                1 AS headcount,
+                COALESCE(dmod.fte_estandar, 1.0) AS fte_real,
+                ROUND(180 * COALESCE(dmod.fte_estandar, 1.0)) AS horas_capacidad,
+                f.sueldo_base_intervalo,
+                (EXTRACT(YEAR FROM t.fecha) - EXTRACT(YEAR FROM TO_DATE(f.fecha_inicio_vigencia_sk::text, 'YYYYMMDD'))) * 12 +
+                (EXTRACT(MONTH FROM t.fecha) - EXTRACT(MONTH FROM TO_DATE(f.fecha_inicio_vigencia_sk::text, 'YYYYMMDD')))
+            FROM dwh.fact_rotacion f
+            JOIN dwh.dim_tiempo t 
+                ON t.fecha >= TO_DATE(f.fecha_inicio_vigencia_sk::text, 'YYYYMMDD')
+                AND t.fecha <= LEAST(
+                    TO_DATE(f.fecha_fin_vigencia_sk::text, 'YYYYMMDD'),
+                    (mes_maximo + INTERVAL '1 month - 1 day')::DATE
+                )
+                -- Solo fechas de fin de mes
+                AND EXTRACT(MONTH FROM t.fecha) != EXTRACT(MONTH FROM (t.fecha + INTERVAL '1 day'))
+                -- Solo meses desde el mínimo afectado en adelante
+                AND t.fecha >= (mes_minimo + INTERVAL '1 month - 1 day')::DATE
+            JOIN dwh.dim_modalidad_contrato dmod ON f.modalidad_sk = dmod.modalidad_sk
+            JOIN dwh.dim_medida_aplicada dma ON f.medida_sk = dma.medida_sk
+            WHERE 
+                f.empleado_sk > 0
+                AND UPPER(dma.tipo_movimiento) NOT IN ('BAJA')
+            ORDER BY t.tiempo_sk, f.empleado_sk, f.fecha_inicio_vigencia_sk DESC;
+            
+            RAISE NOTICE 'Snapshots regenerados incrementalmente';
+        END;
+    ELSE
+        RAISE NOTICE 'Sin meses afectados, no se regeneran snapshots';
     END IF;
     
 END $$;
