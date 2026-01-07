@@ -121,6 +121,8 @@ def create_staging_tasks(task_prefix: str = "stg"):
     # =========================================================================
 
     # Definir columnas de clave primaria por tabla (para eliminar duplicados)
+    # NOTA: Para rotación, la PK debe incluir la fecha del movimiento (desde3)
+    # porque un empleado puede tener múltiples eventos en diferentes fechas
     PRIMARY_KEYS = {
         "stg_asistencia_diaria": ["asistio_en", "id_empleado", "tipo_turno"],
         "stg_realizacion_capacitaciones": ["rut", "nombre_curso"],

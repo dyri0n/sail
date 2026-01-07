@@ -1,6 +1,28 @@
 -- ====================================================================
 -- PASO 1: CALCULAR LA DELTA Y CLASIFICAR LA ACCIÓN
 -- ====================================================================
+
+-- 1.1: Primero deduplicamos staging tomando el último estado por empleado
+-- Si hay múltiples filas (ej: contratación y baja), tomamos la más reciente
+CREATE TEMPORARY TABLE tmp_staging_dedup AS
+SELECT DISTINCT ON (id_empleado)
+    id_empleado,
+    nombre,
+    sexo,
+    fecha_nacimiento,
+    nacionalidad,
+    estado_civil,
+    tipo_empleo,
+    baja,
+    alta
+FROM stg.stg_rotacion_empleados
+ORDER BY id_empleado, 
+    -- Prioridad: Si hay baja, es el estado final del empleado
+    CASE WHEN baja IS NOT NULL THEN 1 ELSE 2 END,
+    -- Si hay múltiples registros, tomamos el más reciente por fecha de alta
+    alta DESC NULLS LAST;
+
+-- 1.2: Ahora calculamos la lógica con staging deduplicado
 CREATE TEMPORARY TABLE tmp_empleado_logic AS
 SELECT
     -- Datos de Staging
@@ -52,7 +74,7 @@ SELECT
         ELSE 'SIN_CAMBIOS'
     END AS accion_requerida
 
-FROM stg.stg_rotacion_empleados s
+FROM tmp_staging_dedup s
 LEFT JOIN dwh.dim_empleado d
     ON s.id_empleado::VARCHAR = d.empleado_id_nk  -- Match por ID Negocio (SAP) - Cast a VARCHAR
     AND d.scd_es_actual = TRUE;          -- Solo contra la versión vigente
@@ -124,4 +146,5 @@ FROM tmp_empleado_logic tmp
 WHERE tmp.accion_requerida IN ('NUEVO', 'REINGRESO_SCD2', 'BAJA_SCD2', 'CAMBIO_SCD2');
 
 -- Limpieza
+DROP TABLE tmp_staging_dedup;
 DROP TABLE tmp_empleado_logic;
