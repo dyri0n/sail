@@ -26,7 +26,14 @@ def create_rotacion_tasks(task_prefix: str = "rot"):
         sql="fact-tables/fact_rotacion.sql",
     )
 
+    cargar_dotacion_manual = SQLExecuteQueryOperator(
+        task_id=f"{task_prefix}_cargar_dotacion_manual",
+        conn_id=DWH_CONN_ID,
+        sql="fact-tables/fact_dotacion_manual.sql",
+    )
+
     return {
         "dim_medida": dim_medida,
         "fact_rotacion": fact_rotacion,
+        "cargar_dotacion_manual": cargar_dotacion_manual,
     }

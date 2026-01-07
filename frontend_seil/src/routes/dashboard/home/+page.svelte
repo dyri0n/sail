@@ -45,6 +45,7 @@
             </div>
         </a>
         <!-- User Activity -->
+         {#if data.user.rol === 'ADMIN'}
         <a href="/dashboard/usuarios" class="btn-effect block group relative bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 hover:border-green-500 transition-all duration-300 text-left overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1">
             
             <div class="absolute inset-0 bg-gradient-to-r from-green-600/0 via-green-600/5 to-green-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 pointer-events-none"></div>
@@ -64,7 +65,7 @@
                 </svg>
             </div>
         </a>
-
+        {/if}
         <!-- Files -->
         <a href="/dashboard/directorios" class="block group relative bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 hover:border-purple-500 transition-all duration-300 text-left overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1">
     

@@ -101,13 +101,17 @@ with DAG(
     stg_cargar_rotacion = stg["cargar_rotacion"](stg_verificar)
     stg_cargar_cap_realizacion = stg["cargar_capacitaciones_realizacion"](stg_verificar)
     stg_cargar_cap_participantes = stg["cargar_capacitaciones_participantes"](stg_verificar)
+    stg_cargar_cap_participantes = stg["cargar_capacitaciones_participantes"](stg_verificar)
     stg_cargar_asistencia = stg["cargar_asistencia"](stg_verificar)
+    stg_cargar_dotacion_sap = stg["cargar_dotacion_sap"](stg_verificar)
+
     stg_resumen = stg["resumen"](
         [
             stg_cargar_rotacion,
             stg_cargar_cap_realizacion,
             stg_cargar_cap_participantes,
             stg_cargar_asistencia,
+            stg_cargar_dotacion_sap,
         ]
     )
 
@@ -118,6 +122,7 @@ with DAG(
         stg_cargar_cap_realizacion,
         stg_cargar_cap_participantes,
         stg_cargar_asistencia,
+        stg_cargar_dotacion_sap,
     ]
     (
         [
@@ -125,6 +130,7 @@ with DAG(
             stg_cargar_cap_realizacion,
             stg_cargar_cap_participantes,
             stg_cargar_asistencia,
+            stg_cargar_dotacion_sap,
         ]
         >> stg_resumen
         >> fin_staging
@@ -144,7 +150,7 @@ with DAG(
     # =========================================================================
     rot = create_rotacion_tasks(task_prefix="02")
 
-    fin_dimensiones >> rot["dim_medida"] >> rot["fact_rotacion"] >> fin_rotacion
+    fin_dimensiones >> rot["dim_medida"] >> rot["fact_rotacion"] >> rot["cargar_dotacion_manual"] >> fin_rotacion
 
     # =========================================================================
     # 03 - HECHOS ASISTENCIA

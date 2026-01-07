@@ -11,6 +11,7 @@
     logs: LogEntry[];
     user?: {
       nombre: string;
+      rol?: string;
     };
     error?: string;
     token?: string;  // Token pasado desde el servidor
@@ -40,7 +41,7 @@
 
     try {
       // 1. Disparar el DAG en Airflow vía backend
-      const response = await triggerETL('00_carga_excel_staging', token);
+      const response = await triggerETL('99_maestro_poblado_completo_dwh', token);
       currentExecutionId = response.execution_id;
       
       console.log('ETL iniciado:', response);
@@ -335,6 +336,8 @@
     </div>
   </div>
 
+  <!-- Sección de Logs - Solo visible para ADMIN -->
+  {#if data.user?.rol === 'ADMIN'}
   <div class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border border-gray-700 shadow-xl overflow-hidden flex flex-col shrink-0 h-48 lg:h-56 xl:h-64">
     <div class="bg-gradient-to-r from-gray-900 to-gray-800 px-4 lg:px-6 py-3 border-b border-gray-700 flex justify-between items-center shrink-0">
       <div class="flex items-center">
@@ -386,6 +389,7 @@
       <span>Total logs: {data.logs.length}</span>
     </div>
   </div>
+  {/if}
 </div>
 
 <style>

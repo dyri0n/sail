@@ -304,3 +304,52 @@ COMMENT ON COLUMN stg_proceso_seleccion.activo IS 'Indica si el candidato está 
 COMMENT ON COLUMN stg_proceso_seleccion.continuidad_mas_4_meses IS 'Indica si el candidato continuó más de 4 meses.';
 COMMENT ON COLUMN stg_proceso_seleccion.origen IS 'Origen geográfico del candidato.';
 COMMENT ON COLUMN stg_proceso_seleccion.total_ambiguo IS 'Campo "TOTAL" descrito como AMBIGUO.';
+
+-- =============================================================================
+-- TABLA STAGING DOTACIÓN SAP (Snapshot)
+-- =============================================================================
+CREATE TABLE stg_dotacion_sap (
+    -- Identificadores
+    id_personal INTEGER,
+    rut VARCHAR(20),
+    numero_personal INTEGER,
+    id_sociedad VARCHAR(10),
+    nombre_empresa VARCHAR(100),
+    area_personal VARCHAR(100),
+    desde_area DATE,
+    hasta_area DATE,
+    unidad_organizativa VARCHAR(100),
+    posicion VARCHAR(100),
+    sueldo_base INTEGER,
+
+    -- Info laboral y personal
+    relacion_laboral VARCHAR(50),
+    ant_puesto NUMERIC(5,2),
+    denominacion VARCHAR(100),
+    fecha_nacimiento DATE,
+    edad INTEGER,
+    pais_nacimiento VARCHAR(50),
+    lugar_nacimiento VARCHAR(100),
+    nacionalidad VARCHAR(50),
+    estado_civil VARCHAR(50),
+    nro_hijos INTEGER,
+    sexo VARCHAR(10),
+
+    -- Fechas y datos administrativos
+    desde_1 DATE,
+    hasta_1 DATE,
+    clase_fecha VARCHAR(50),
+    fecha DATE,
+    clase_prestamo VARCHAR(50),
+    movilidad_geografica VARCHAR(10),
+    experiencia_profesional INTEGER,
+    inicio DATE,
+    hasta_2 DATE,
+    clase_medida VARCHAR(100),
+    motivo_medida VARCHAR(100),
+    alta DATE,
+    baja DATE,
+    nombre_superior VARCHAR(100)
+);
+
+COMMENT ON TABLE stg_dotacion_sap IS 'Staging para data_sap.xlsx: Snapshot de dotación.';

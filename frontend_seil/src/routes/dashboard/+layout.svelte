@@ -53,6 +53,8 @@
         Inicio
       </a>
       
+      <!-- Solo ADMIN: Gestión de Usuarios -->
+      {#if data.user?.rol === 'ADMIN'}
       <a 
         href="/dashboard/usuarios" 
         class={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${activeLink() === 'usuarios' ? 'bg-gradient-to-r from-red-600/20 to-red-700/20 text-red-400 border-l-4 border-red-500' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
@@ -64,7 +66,35 @@
         </svg>
         Gestión de Usuarios
       </a>
+      {/if}
       
+      <!-- Ambos roles: Archivos -->
+      <a 
+        href="/dashboard/directorios" 
+        class={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${$page.url.pathname.includes('directorios') ? 'bg-gradient-to-r from-red-600/20 to-red-700/20 text-red-400 border-l-4 border-red-500' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
+        aria-label="Gestión de Archivos"
+        title="Archivos"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+        </svg>
+        Archivos
+      </a>
+      
+      <!-- Ambos roles: Predicciones -->
+      <a 
+        href="/dashboard/predicciones" 
+        class={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${$page.url.pathname.includes('predicciones') ? 'bg-gradient-to-r from-red-600/20 to-red-700/20 text-red-400 border-l-4 border-red-500' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
+        aria-label="Modelo Predictivo"
+        title="Predicciones"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        Predicciones
+      </a>
+      
+      <!-- Ambos roles: ETL -->
       <a 
         href="/dashboard/etl" 
         class={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${activeLink() === 'etl' ? 'bg-gradient-to-r from-red-600/20 to-red-700/20 text-red-400 border-l-4 border-red-500' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
@@ -77,7 +107,8 @@
         Ejecutar ETL
       </a>
       
-      <!-- NUEVA SECCIÓN: Logs y Auditoría -->
+      <!-- Solo ADMIN: Logs y Auditoría -->
+      {#if data.user?.rol === 'ADMIN'}
       <a 
         href="/dashboard/auditoria" 
         class={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${activeLink() === 'auditoria' ? 'bg-gradient-to-r from-red-600/20 to-red-700/20 text-red-400 border-l-4 border-red-500' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
@@ -89,6 +120,7 @@
         </svg>
         Logs y Auditoría
       </a>
+      {/if}
       
     </nav>
     

@@ -170,6 +170,58 @@ ROTACION_EMPLEADOS = ExcelSheet(
 )
 
 # =============================================================================
+# HOJAS: SAP (Dotación Snapshot)
+# =============================================================================
+ARCHIVO_SAP = "data_sap.xlsx"
+
+DOTACION_SAP = ExcelSheet(
+    archivo=ARCHIVO_SAP,
+    hoja="Sheet1", # Default name usually, or "Hoja1"
+    tabla="stg.stg_dotacion_sap",
+    header_row=0,
+    columnas=[
+        col("Nº pers.", "id_personal", ColumnType.INTEGER),
+        col("RUT", "rut"),
+        col("Número de personal", "numero_personal", ColumnType.INTEGER),
+        col("Soc.", "id_sociedad"),
+        col("Nombre de la empresa", "nombre_empresa"),
+        col("Denom.área personal", "area_personal"),
+        col("Desde", "desde_area", ColumnType.DATE),
+        col("Hasta", "hasta_area", ColumnType.DATE),
+        col("Denominación de unidad organiz", "unidad_organizativa"),
+        col("Denominación de posiciones", "posicion"),
+        col("Sueldo Base", "sueldo_base", ColumnType.INTEGER),
+        
+        col("Relación laboral", "relacion_laboral"),
+        col("Ant_puesto", "ant_puesto", ColumnType.NUMERIC),
+        col("Denominación", "denominacion"),
+        col("Fe.nacim.", "fecha_nacimiento", ColumnType.DATE),
+        col("Edad del empleado", "edad", ColumnType.INTEGER),
+        col("País de nacimiento", "pais_nacimiento"),
+        col("Lugar de nacimiento", "lugar_nacimiento"),
+        col("Nacionalidad", "nacionalidad"),
+        col("Clave para el estado civil", "estado_civil"),
+        col("Nº de hijos", "nro_hijos", ColumnType.INTEGER),
+        col("Texto sexo", "sexo"),
+
+        col("Desde.1", "desde_1", ColumnType.DATE),
+        col("Hasta.1", "hasta_1", ColumnType.DATE),
+        col("Clase de fecha", "clase_fecha"),
+        col("Fecha", "fecha", ColumnType.DATE),
+        col("Clase de préstamo", "clase_prestamo"),
+        col("Movilidad geográfica", "movilidad_geografica"),
+        col("Experiencia Profesional", "experiencia_profesional", ColumnType.INTEGER),
+        col("Inicio", "inicio", ColumnType.DATE),
+        col("Hasta.2", "hasta_2", ColumnType.DATE),
+        col("Denominación de la clase de me", "clase_medida"),
+        col("Denominación del motivo de med", "motivo_medida"),
+        col("Alta", "alta", ColumnType.DATE),
+        col("Baja", "baja", ColumnType.DATE),
+        col("Nombre del superior (GO)", "nombre_superior"),
+    ]
+)
+
+# =============================================================================
 # REGISTROS DE HOJAS POR ARCHIVO
 # =============================================================================
 
@@ -185,6 +237,9 @@ HOJAS_POR_ARCHIVO: dict[str, list[ExcelSheet]] = {
     ARCHIVO_ROTACION: [
         ROTACION_EMPLEADOS,
     ],
+    ARCHIVO_SAP: [
+        DOTACION_SAP,
+    ],
 }
 
 # Lista plana de todas las hojas
@@ -193,6 +248,7 @@ TODAS_LAS_HOJAS: list[ExcelSheet] = [
     CAPACITACIONES_PARTICIPANTES,
     ASISTENCIA_DIARIA,
     ROTACION_EMPLEADOS,
+    DOTACION_SAP,
 ]
 
 # Diccionario para acceso rápido por ID (archivo[hoja])

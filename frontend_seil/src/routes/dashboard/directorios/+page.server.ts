@@ -2,58 +2,56 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { PageServerLoad } from './$types';
 
-// Definimos las rutas base
-const BASE_PATH = path.join(process.cwd(), 'uploads');
-const PATHS = {
-    no_leidos: path.join(BASE_PATH, 'no_leidos'), // Pendientes de ir a Staging
-    leidos: path.join(BASE_PATH, 'leidos')        // Ya cargados en Staging
-};
+// Ruta al landing-zone (donde se depositan los archivos Excel para ETL)
+const LANDING_ZONE_PATH = 'C:/Users/yampa/Trabajos/UTA/ici/p4/github/sail/landing-zone';
 
 export const load: PageServerLoad = async () => {
-    // Función auxiliar para leer una carpeta específica
     async function getFilesFromDir(dirPath: string, status: 'pending' | 'processed') {
         try {
-            // Crear carpeta si no existe
-            try { await fs.access(dirPath); } 
-            catch { await fs.mkdir(dirPath, { recursive: true }); }
+            // Verificar que existe
+            try { await fs.access(dirPath); }
+            catch {
+                console.error(`Directorio no existe: ${dirPath}`);
+                return [];
+            }
 
             const fileNames = await fs.readdir(dirPath);
-            
-            // Filtrar excels
+
+            // Filtrar solo archivos Excel
             const excelFiles = fileNames.filter(f => /\.(xlsx|xls|csv)$/i.test(f));
 
-            // Obtener stats
+            // Obtener stats de cada archivo
             return Promise.all(excelFiles.map(async (fileName) => {
                 const filePath = path.join(dirPath, fileName);
                 const stats = await fs.stat(filePath);
-                
+
                 return {
                     name: fileName,
-                    path: filePath, // Opcional, por seguridad mejor no enviarlo al cliente
+                    path: filePath,
                     size: formatBytes(stats.size),
-                    date: stats.mtime.toLocaleDateString('es-CL', { 
-                        day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'
+                    date: stats.mtime.toLocaleDateString('es-CL', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
                     }),
                     timestamp: stats.mtime.getTime(),
-                    status: status // 'pending' = No leído, 'processed' = Leído
+                    status: status
                 };
             }));
         } catch (error) {
-            console.error(`Error en carpeta ${status}:`, error);
+            console.error(`Error leyendo landing-zone:`, error);
             return [];
         }
     }
 
-    // Ejecutamos ambas lecturas en paralelo
-    const [pendingFiles, processedFiles] = await Promise.all([
-        getFilesFromDir(PATHS.no_leidos, 'pending'),
-        getFilesFromDir(PATHS.leidos, 'processed')
-    ]);
+    // Leer archivos del landing-zone (todos como "pending" por ahora)
+    const files = await getFilesFromDir(LANDING_ZONE_PATH, 'pending');
 
-    // Unimos y ordenamos por fecha (más reciente primero)
-    const allFiles = [...pendingFiles, ...processedFiles].sort((a, b) => b.timestamp - a.timestamp);
+    // Ordenar por fecha (más reciente primero)
+    files.sort((a, b) => b.timestamp - a.timestamp);
 
-    return { files: allFiles };
+    return {
+        files,
+        userRole: 'GERENCIA' // TODO: Get from locals when available
+    };
 };
 
 function formatBytes(bytes: number, decimals = 2) {

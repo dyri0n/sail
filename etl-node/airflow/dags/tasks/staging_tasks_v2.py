@@ -18,6 +18,7 @@ from tasks.sheet_configs import (
     ASISTENCIA_DIARIA,
     CAPACITACIONES_PARTICIPANTES,
     CAPACITACIONES_REALIZACION,
+    DOTACION_SAP,
     ROTACION_EMPLEADOS,
     TODAS_LAS_HOJAS,
 )
@@ -31,7 +32,9 @@ TRUNCATE_SQL = """
 TRUNCATE TABLE stg.stg_rotacion_empleados CASCADE;
 TRUNCATE TABLE stg.stg_realizacion_capacitaciones CASCADE;
 TRUNCATE TABLE stg.stg_participacion_capacitaciones CASCADE;
+TRUNCATE TABLE stg.stg_participacion_capacitaciones CASCADE;
 TRUNCATE TABLE stg.stg_asistencia_diaria CASCADE;
+TRUNCATE TABLE stg.stg_dotacion_sap CASCADE;
 """
 
 
@@ -45,8 +48,10 @@ def create_staging_tasks(task_prefix: str = "stg"):
             - truncar: Trunca tablas de staging (SQLOperator)
             - cargar_capacitaciones_realizacion: Carga hoja Informe 202X
             - cargar_capacitaciones_participantes: Carga hoja Participantes
+            - cargar_capacitaciones_participantes: Carga hoja Participantes
             - cargar_asistencia: Carga hoja Días
             - cargar_rotacion: Carga hoja Hoja1
+            - cargar_dotacion_sap: Carga hoja Sheet1 (SAP Snapshot)
             - resumen: Muestra resumen de carga
     """
 
@@ -120,7 +125,10 @@ def create_staging_tasks(task_prefix: str = "stg"):
         "stg_asistencia_diaria": ["asistio_en", "id_empleado", "tipo_turno"],
         "stg_realizacion_capacitaciones": ["rut", "nombre_curso"],
         "stg_participacion_capacitaciones": ["rut", "nombre_curso"],
+        "stg_realizacion_capacitaciones": ["rut", "nombre_curso"],
+        "stg_participacion_capacitaciones": ["rut", "nombre_curso"],
         "stg_rotacion_empleados": ["id_empleado"],
+        "stg_dotacion_sap": ["id_personal"],
     }
 
     def _cargar_hoja_a_db(sheet: ExcelSheet, info_validacion: dict) -> dict:
@@ -194,6 +202,11 @@ def create_staging_tasks(task_prefix: str = "stg"):
         """Carga hoja 'Hoja1' -> stg_rotacion_empleados"""
         return _cargar_hoja_a_db(ROTACION_EMPLEADOS, file_info)
 
+    @task(task_id=f"{task_prefix}_cargar_dotacion_sap")
+    def cargar_dotacion_sap(file_info: dict, **context):
+        """Carga hoja 'Sheet1' -> stg_dotacion_sap"""
+        return _cargar_hoja_a_db(DOTACION_SAP, file_info)
+
     # =========================================================================
     # TASK: RESUMEN
     # =========================================================================
@@ -223,5 +236,6 @@ def create_staging_tasks(task_prefix: str = "stg"):
         "cargar_capacitaciones_participantes": cargar_capacitaciones_participantes,
         "cargar_asistencia": cargar_asistencia,
         "cargar_rotacion": cargar_rotacion,
+        "cargar_dotacion_sap": cargar_dotacion_sap,
         "resumen": resumen_carga,
     }

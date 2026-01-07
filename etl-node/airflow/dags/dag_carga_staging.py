@@ -59,7 +59,9 @@ with DAG(
     resultado_cap_realizacion = stg["cargar_capacitaciones_realizacion"](file_info)
     resultado_cap_participantes = stg["cargar_capacitaciones_participantes"](file_info)
     resultado_asistencia = stg["cargar_asistencia"](file_info)
+
     resultado_rotacion = stg["cargar_rotacion"](file_info)
+    resultado_dotacion_sap = stg["cargar_dotacion_sap"](file_info)
 
     # Consolidar resultados
     resultados = [
@@ -67,6 +69,7 @@ with DAG(
         resultado_cap_participantes,
         resultado_asistencia,
         resultado_rotacion,
+        resultado_dotacion_sap,
     ]
     resumen = stg["resumen"](resultados)
 

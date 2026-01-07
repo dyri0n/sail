@@ -5,6 +5,14 @@ import type { Handle } from '@sveltejs/kit';
 // Rutas accesibles sin necesidad de haber iniciado sesión
 const publicRoutes = ['/', '/login', '/about'];
 
+// Permisos por ruta: qué roles pueden acceder a cada sección
+// ADMIN tiene acceso a todo. Solo GERENCIA tiene restricciones.
+const ROUTE_PERMISSIONS: Record<string, string[]> = {
+  '/dashboard/usuarios': ['ADMIN'],    // Solo ADMIN
+  '/dashboard/auditoria': ['ADMIN'],   // Solo ADMIN
+  // Todo lo demás (ETL, Home, Directorios, Métricas, Predicciones) accesible por ambos
+};
+
 export const handle: Handle = async ({ event, resolve }) => {
   const session = event.cookies.get('session');
   const pathname = event.url.pathname;
@@ -65,10 +73,16 @@ export const handle: Handle = async ({ event, resolve }) => {
       throw redirect(303, '/dashboard/home');
     }
 
-
-    if (pathname.startsWith('/dashboard/usuarios') && user.rol !== 'ADMIN') {
-      console.warn(`[HOOK] RBAC: Usuario ${user.email} bloqueado en /usuarios`);
-      throw redirect(303, '/dashboard/home');
+    // 3. RBAC: Verificar permisos por ruta
+    for (const [route, allowedRoles] of Object.entries(ROUTE_PERMISSIONS)) {
+      if (pathname.startsWith(route)) {
+        const userRole = user.rol || 'USER';
+        if (!allowedRoles.includes(userRole)) {
+          console.warn(`[HOOK] RBAC: Usuario ${user.email} (${userRole}) bloqueado en ${route}`);
+          throw redirect(303, '/dashboard/home');
+        }
+        break; // Match found, exit loop
+      }
     }
   }
 
