@@ -1,13 +1,54 @@
+-- =============================================================================
+-- FACT_ASISTENCIA.SQL - Carga de hechos de asistencia diaria
+-- =============================================================================
+-- IMPORTANTE: Este ETL requiere que dim_empleado tenga todos los empleados
+-- de stg_asistencia_diaria. Si faltan empleados, primero se insertan en la
+-- dimensión con datos mínimos para evitar pérdida de datos.
+-- =============================================================================
+
 DO $$
 DECLARE
     -- === CONFIGURACIÓN ===
     TOLERANCIA_MIN CONSTANT INTEGER := 5;
+    FECHA_VIGENCIA_DEFAULT CONSTANT DATE := '2020-01-01';
     
     fecha_rec RECORD;
     count_stg INTEGER;
     count_dwh INTEGER;
+    empleados_nuevos INTEGER;
 BEGIN
-    -- 1. Iteramos por cada fecha distinta presente en el Staging
+    -- =========================================================================
+    -- PASO 0: Asegurar que todos los empleados de asistencia existan en dim_empleado
+    -- =========================================================================
+    INSERT INTO dwh.dim_empleado (
+        empleado_id_nk,
+        nombre_completo,
+        estado_laboral_activo,
+        scd_fecha_inicio_vigencia,
+        scd_fecha_fin_vigencia,
+        scd_es_actual
+    )
+    SELECT DISTINCT
+        CAST(s.id_empleado AS VARCHAR),
+        'EMPLEADO ' || s.id_empleado || ' (PENDIENTE SINCRONIZAR)',
+        TRUE,
+        FECHA_VIGENCIA_DEFAULT,
+        '9999-12-31'::DATE,
+        TRUE
+    FROM stg.stg_asistencia_diaria s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dwh.dim_empleado de 
+        WHERE de.empleado_id_nk = CAST(s.id_empleado AS VARCHAR)
+    );
+    
+    GET DIAGNOSTICS empleados_nuevos = ROW_COUNT;
+    IF empleados_nuevos > 0 THEN
+        RAISE NOTICE '[ASISTENCIA] Insertados % empleados faltantes en dim_empleado', empleados_nuevos;
+    END IF;
+
+    -- =========================================================================
+    -- PASO 1: Iterar por cada fecha en Staging
+    -- =========================================================================
     FOR fecha_rec IN SELECT DISTINCT asistio_en FROM stg.stg_asistencia_diaria LOOP
         
         -- 2. Obtenemos conteos
@@ -20,7 +61,6 @@ BEGIN
         WHERE fecha_sk = TO_CHAR(fecha_rec.asistio_en, 'YYYYMMDD')::INTEGER;
         
         -- 3. VALIDACIÓN (Smart Load)
-        -- Si los conteos son distintos (o DWH es 0), procedemos a recargar esa fecha
         IF count_stg <> count_dwh THEN
             
             RAISE NOTICE 'Recargando fecha % (Stg: %, Dwh: %)', fecha_rec.asistio_en, count_stg, count_dwh;
@@ -40,7 +80,7 @@ BEGIN
             SELECT 
                 TO_CHAR(s.asistio_en, 'YYYYMMDD')::INTEGER,
                 COALESCE(dp.permiso_sk, -1),
-                COALESCE(de.empleado_sk, -1),
+                de.empleado_sk,  -- Ya no usamos COALESCE, el empleado DEBE existir
                 COALESCE(dt.turno_sk, -1),
 
                 -- Timestamps (Fecha + Hora)
@@ -87,20 +127,20 @@ BEGIN
                     ELSE 0 
                 END,
 
-                TOLERANCIA_MIN -- Guardamos qué regla se aplicó
+                TOLERANCIA_MIN
 
             FROM stg.stg_asistencia_diaria s
             LEFT JOIN dwh.dim_permiso dp ON TRIM(s.tipo_permiso) = dp.codigo_permiso_nk
             LEFT JOIN dwh.dim_turno dt ON TRIM(s.tipo_turno) = dt.nombre_turno
-            -- Join SCD2 Empleado
-            LEFT JOIN dwh.dim_empleado de 
+            -- JOIN con scd_es_actual (más robusto que BETWEEN con fechas)
+            INNER JOIN dwh.dim_empleado de 
                 ON CAST(s.id_empleado AS VARCHAR) = de.empleado_id_nk 
-                AND s.asistio_en BETWEEN de.scd_fecha_inicio_vigencia AND de.scd_fecha_fin_vigencia
+                AND de.scd_es_actual = TRUE
             
-            WHERE s.asistio_en = fecha_rec.asistio_en; -- Solo insertamos la fecha del bucle
+            WHERE s.asistio_en = fecha_rec.asistio_en;
             
         ELSE
-            RAISE NOTICE 'Fecha % sin cambios en volumen (Stg: %, Dwh: %). OMITIDA.', fecha_rec.asistio_en, count_stg, count_dwh;
+            RAISE NOTICE 'Fecha % sin cambios (Stg: %, Dwh: %). OMITIDA.', fecha_rec.asistio_en, count_stg, count_dwh;
         END IF;
 
     END LOOP;
