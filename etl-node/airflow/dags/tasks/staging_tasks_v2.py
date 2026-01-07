@@ -7,7 +7,6 @@ para parametrizar la carga de hojas individuales.
 
 from pathlib import Path
 
-import pandas as pd
 from airflow.exceptions import AirflowException
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.sdk import task
@@ -86,7 +85,7 @@ def create_staging_tasks(task_prefix: str = "stg"):
                 error_msg = result.get("error", "Error desconocido")
                 errors.append(f"{sheet.id}: {error_msg}")
             else:
-                print(f"  ✓ Validación exitosa")
+                print("  ✓ Validación exitosa")
                 hojas_validadas[sheet.id] = {
                     "path": result["path"],
                     "hoja_resuelta": result.get("hoja_resuelta", sheet.hoja),

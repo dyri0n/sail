@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.providers.standard.operators.empty import EmptyOperator
-
 from tasks.asistencia_tasks import create_asistencia_tasks
 
 default_args = {

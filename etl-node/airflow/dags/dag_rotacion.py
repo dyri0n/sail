@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.providers.standard.operators.empty import EmptyOperator
-
 from tasks.rotacion_tasks import create_rotacion_tasks
 
 default_args = {
