@@ -30,7 +30,7 @@ BEGIN
     -- =================================================================
     meses_afectados := ARRAY[]::DATE[];
     
-    FOR fecha_rec IN SELECT DISTINCT desde3 FROM stg.stg_rotacion_empleados LOOP
+    FOR fecha_rec IN SELECT DISTINCT desde3 FROM stg.stg_rotacion_empleados WHERE desde3 IS NOT NULL LOOP
         
         SELECT COUNT(*) INTO count_stg 
         FROM stg.stg_rotacion_empleados 
@@ -40,10 +40,11 @@ BEGIN
         FROM dwh.fact_rotacion 
         WHERE fecha_inicio_vigencia_sk = TO_CHAR(fecha_rec.desde3, 'YYYYMMDD')::INTEGER;
         
-        -- Solo recargamos si hay diferencia en volumen
-        IF count_stg <> count_dwh THEN
+        -- Recargar si hay datos en staging (diferencia de volumen O datos nuevos)
+        -- Nota: Si count_stg > 0, siempre procesamos porque staging se trunca post-ETL
+        IF count_stg > 0 THEN
             
-            RAISE NOTICE 'Recargando fecha % (Stg: %, Dwh: %)', fecha_rec.desde3, count_stg, count_dwh;
+            RAISE NOTICE 'Procesando fecha % (Stg: %, Dwh: %)', fecha_rec.desde3, count_stg, count_dwh;
             
             -- Registrar el mes afectado para regenerar snapshot después
             meses_afectados := array_append(meses_afectados, DATE_TRUNC('month', fecha_rec.desde3)::DATE);
@@ -76,25 +77,35 @@ BEGIN
                     ELSE 0
                 END
             FROM stg.stg_rotacion_empleados s
+            -- JOIN Empleado: Usar MIN para evitar duplicados si hay múltiples scd_es_actual = TRUE
+            LEFT JOIN LATERAL (
+                SELECT MIN(empleado_sk) AS empleado_sk 
+                FROM dwh.dim_empleado 
+                WHERE empleado_id_nk = s.id_empleado::VARCHAR
+                AND scd_es_actual = TRUE
+            ) de ON TRUE
+            -- JOIN Modalidad Contrato
             LEFT JOIN dwh.dim_modalidad_contrato dm 
-                ON TRIM(UPPER(s.tipo_empleo)) = dm.tipo_vinculo_legal
-                AND TRIM(UPPER(s.jornada)) = dm.regimen_horario
-            LEFT JOIN dwh.dim_empleado de 
-                ON s.id_empleado::VARCHAR = de.empleado_id_nk
-                AND s.desde3 BETWEEN de.scd_fecha_inicio_vigencia AND de.scd_fecha_fin_vigencia
+                ON UPPER(TRIM(s.tipo_empleo)) = UPPER(dm.tipo_vinculo_legal)
+                AND UPPER(TRIM(s.jornada)) = UPPER(dm.regimen_horario)
+            -- JOIN Empresa
             LEFT JOIN dwh.dim_empresa demp 
-                ON CAST(s.id_empresa AS VARCHAR) = demp.codigo
+                ON s.id_empresa::VARCHAR = demp.codigo
+            -- JOIN Centro de Costo
             LEFT JOIN dwh.dim_centro_costo dcc 
-                ON s.ceco = dcc.nombre_ceco
-            LEFT JOIN dwh.dim_cargo dc 
-                ON TRIM(UPPER(s.cargo)) = dc.nombre_cargo
+                ON UPPER(TRIM(s.ceco)) = UPPER(TRIM(dcc.nombre_ceco))
+            -- JOIN Cargo: Usar MIN para evitar duplicados por area_funcional
+            LEFT JOIN LATERAL (
+                SELECT MIN(cargo_sk) AS cargo_sk 
+                FROM dwh.dim_cargo 
+                WHERE UPPER(nombre_cargo) = UPPER(TRIM(s.cargo))
+            ) dc ON TRUE
+            -- JOIN Medida Aplicada (por tipo_movimiento Y razon_detallada)
             LEFT JOIN dwh.dim_medida_aplicada dma 
-                ON TRIM(UPPER(s.clase_medida)) = dma.tipo_movimiento
-                AND TRIM(UPPER(s.motivo_medida)) = dma.razon_detallada
+                ON UPPER(TRIM(s.clase_medida)) = UPPER(dma.tipo_movimiento)
+                AND UPPER(TRIM(COALESCE(s.motivo_medida, ''))) = UPPER(COALESCE(dma.razon_detallada, ''))
             WHERE s.desde3 = fecha_rec.desde3;
             
-        ELSE
-            RAISE NOTICE 'Fecha % sin cambios (Stg: %, Dwh: %). OMITIDA.', fecha_rec.desde3, count_stg, count_dwh;
         END IF;
         
     END LOOP;
@@ -117,11 +128,12 @@ BEGIN
         );
         
         -- Regenerar snapshots solo para meses afectados
+        -- Usar DISTINCT ON para evitar duplicados cuando un empleado tiene múltiples movimientos en el mes
         INSERT INTO dwh.fact_dotacion_snapshot (
             mes_cierre_sk, empleado_sk, cargo_sk, empresa_sk, modalidad_sk,
             headcount, fte_real, horas_capacidad_mensual, sueldo_base_mensual, antiguedad_meses
         )
-        SELECT 
+        SELECT DISTINCT ON (t.tiempo_sk, f.empleado_sk)
             t.tiempo_sk AS mes_cierre_sk,
             f.empleado_sk,
             f.cargo_sk,
@@ -146,7 +158,9 @@ BEGIN
             -- Excluir registros sin empleado válido (evita duplicados en PK)
             AND f.empleado_sk > 0
             -- Excluir bajas del stock activo (solo 'BAJA' según datos reales del Excel)
-            AND UPPER(dma.tipo_movimiento) NOT IN ('BAJA');
+            AND UPPER(dma.tipo_movimiento) NOT IN ('BAJA')
+        -- Ordenar para que DISTINCT ON tome el registro más reciente del mes
+        ORDER BY t.tiempo_sk, f.empleado_sk, f.fecha_inicio_vigencia_sk DESC;
             
     END IF;
     
